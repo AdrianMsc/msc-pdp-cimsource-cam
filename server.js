@@ -36,16 +36,16 @@ app.post('/api/login', (req, res) => {
   if (password === PASSWORD) {
     const token = jwt.sign({ authenticated: true }, JWT_SECRET, { expiresIn: '24h' });
     res.cookie('token', token, { httpOnly: true, maxAge: 86400000, sameSite: 'lax' });
-    return res.redirect('/product');
+    return res.redirect('/pdp');
   }
   res.redirect('/?error=1');
 });
 
-app.get('/api/product', requireAuth, (req, res) => {
+app.get('/api/pdp', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'pdp-cimsource-cam.html'));
 });
 
-app.get('/product', requireAuth, (req, res) => {
+app.get('/pdp', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'pdp-cimsource-cam.html'));
 });
 

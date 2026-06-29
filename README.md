@@ -78,8 +78,8 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 index.html (static)         → served by Vercel
 api/login.js (serverless)   → handles POST /api/login
-api/product.js (serverless) → handles GET /product (via rewrite)
-pdp-cimsource-cam.html      → served only through /product (rewrite blocks direct access)
+api/pdp.js (serverless)     → handles GET /pdp (via rewrite)
+pdp-cimsource-cam.html      → served only through /pdp (rewrite blocks direct access)
 ```
 
 ## Project Structure
@@ -95,7 +95,7 @@ msc-pdp-cimsource-cam/
 │   └── index.css            # Login page styles
 ├── api/
 │   ├── login.js             # Vercel serverless: login endpoint
-│   └── product.js           # Vercel serverless: serve protected page
+│   └── pdp.js               # Vercel serverless: serve protected page
 ├── assets/                  # Static assets (images, CSS, JS from MSC)
 └── package.json
 ```
@@ -106,8 +106,8 @@ msc-pdp-cimsource-cam/
 |-------|--------|------|-------------|
 | `/` | GET | No | Login page |
 | `/api/login` | POST | No | Validate password, set JWT cookie |
-| `/product` | GET | Yes | Protected product page |
-| `/api/product` | GET | Yes | Protected product page (used by Vercel) |
+| `/pdp` | GET | Yes | Protected product page |
+| `/api/pdp` | GET | Yes | Protected product page (used by Vercel) |
 | `/logout` | GET | No | Clear JWT cookie, redirect to login |
 
 ## Auth Flow
@@ -122,10 +122,10 @@ Browser                  Server
   │  302 + Set-Cookie: JWT │
   │  <──────────────────── │
   │                        │
-  │  GET /product          │
+  │  GET /pdp               │
   │  (cookie: JWT) ───────>│
   │                        │  Verify JWT
   │  200 (HTML page) <─────│
 ```
 
-On Vercel, `/product` is rewritten to `/api/product` via `vercel.json`. Direct access to `pdp-cimsource-cam.html` is rewritten to `/` (login required).
+On Vercel, `/pdp` is rewritten to `/api/pdp` via `vercel.json`. Direct access to `pdp-cimsource-cam.html` is rewritten to `/` (login required).

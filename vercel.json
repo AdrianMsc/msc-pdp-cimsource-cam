@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/product", "destination": "/api/product" },
+    { "source": "/pdp", "destination": "/api/pdp" },
     { "source": "/pdp-cimsource-cam.html", "destination": "/" }
   ]
 }

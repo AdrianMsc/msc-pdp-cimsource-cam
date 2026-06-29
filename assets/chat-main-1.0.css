@@ -1,0 +1,765 @@
+@CHARSET "ISO-8859-1";
+
+/**
+ *  Copyright 2018 Avaya Inc. All Rights Reserved.
+ *
+ * Usage of this source is bound to the terms described in
+ * licences/License.txt
+ *
+ * Avaya - Confidential & Proprietary. Use pursuant to your signed agreement or
+ * Avaya Policy
+ */
+
+/*
+ *  Stylesheet for chat-specific components
+ */
+ 
+/* 1 of 2: comment this out to allow the chat panel to float */
+@media only screen and (min-width: 499px) {
+	 .fixedPosition {
+		position:fixed!important;
+	}
+}
+
+#pageTopic {
+    display: block;
+}
+
+#pageTopic:invalid {
+    background: red;
+    color:white;
+}
+/* logo.png must be present in the same CDN instance */
+.presav-chatInitLogo{
+	background-image: url("/global/application-content/images/header/logo.png");
+	background-repeat: no-repeat;
+	width: 303px;
+	height: 41px;
+}
+
+/**
+ *  This is the element the user will click to show the chat panel.
+ */
+
+#chatPanel {
+    display:none;
+}
+#chatForm {
+    display: block;
+}
+
+#chatInterfaceWrap{
+	/* initial state */
+	display: none;
+}
+
+#chatInterface {
+    display: flex;
+    flex-direction: column;
+	height: 100%;
+	margin-left: -15px;
+	margin-right: -15px;
+
+}
+
+#chatInterfaceHeader {
+	height: 48px;
+    flex-shrink: 0;
+
+	/* show the msc logo at top */
+	background-image: url("/global/application-content/images/header/logo.png");
+	background-repeat: no-repeat;
+	background-position: 3px 0px;
+	padding-left: 310px;
+	padding-right: 15px;
+	
+	text-align: right;
+}
+#chatInterfaceHeader button{
+	border: 1px solid #ccc;
+	border-right: 0px;
+	border-radius: 0px;
+	padding: 7px;
+	background-color: transparent;
+	font-size: 87%;
+	cursor: pointer;
+}
+#chatInterfaceHeader button:first-child{
+	border-radius: 7px 0px 0px 7px;
+}
+#chatInterfaceHeader button:last-child{
+	border-right: 1px solid #ccc;
+	border-radius: 0px 7px 7px 0px;
+}
+#messages{
+    overflow-y: auto;
+    height: 100%;
+	max-height: 350px;
+}
+
+#otherThanMessages {
+    flex-shrink: 0;
+}
+
+#usersDiv{
+	min-height: 45px;
+	padding: 10px 15px;
+}
+
+/*
+ * URLs inside the message are black and underlined to stand out against the background.
+ */
+#messages a {
+    color: black;
+    text-decoration: underline;
+}
+#messages p {
+	padding: 5px 15px;
+	margin-bottom: 0px !important;
+	border-bottom: 1px solid #eee;
+}
+#participants {
+    padding-top: 4px;
+}
+
+#participants .user {
+    display: inline-block;
+    min-width: 100px;
+    border: 1px dotted #cccccc;
+	padding: 5px;
+}
+
+#participants .user img{
+	vertical-align: baseline;
+	margin-bottom: -2px;
+	padding-right: 5px;
+}
+
+.bigtext {
+    font-size: 19px;
+}
+.smalltext {
+    font-size: 13px;
+}
+
+.sectionBorder {
+    display: block;
+    border-bottom: 1px solid #cccccc;
+    padding-bottom: 5px;
+}
+
+/**
+ * Login form
+ */
+.presav-chatPanel .formTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0px;
+    padding: 0px;
+}
+.presav-chatPanel .formTable td {
+    padding-left: 3px;
+    padding-right: 3px;
+}
+.presav-chatPanel .formLabel {
+    padding-top: 5px;
+	font-weight: 700;
+}
+
+
+.presav-chatPanel .formField {
+    width: 100%;
+    padding-bottom: 2px;
+}
+.presav-chatPanel .formField input:invalid {
+    background: red;
+    color: white;
+    font-weight: bold;
+}
+.presav-chatPanel .formField input, .presav-chatPanel .formField select {
+    width: 100%;
+    border: 1px solid #cccccc;
+    padding: 3px;
+    background-color: inherit;
+    font-size: 14px;
+}
+
+.presav-chatPanel .formCheckbox {
+    padding-right: 172px;
+    text-align: right;
+}
+
+/*
+ *  The address inputs are hidden by default. To display them, set the value of "display" to "block".
+ */
+.addressClass {
+    display:none;
+}
+
+/*
+ * This is the customer's typing box.
+ */
+.chatField {
+    width: 100%;
+    border: 1px solid #cccccc;
+    padding: 3px;
+    font-size: 16px;
+}
+
+#sendbutton-chat {
+    width: 100%;
+}
+
+#closebutton-chat{
+    display:none;
+}
+
+/*
+ * System messages are left-aligned in blue italics.
+ */
+p.system {
+    color: #999;
+}
+
+/*
+ * Keeping dates and names separate to messages
+ */
+p.date {
+    font-weight: bold;
+    width: 50%;
+}
+
+p.agentDate {
+    font-weight: bold;
+    text-align: right;
+    width: 50%;
+    left: 50%;
+    position: relative;
+}
+
+/*
+ * For those who want chatbot messages to be separate to normal agent messages.
+ */
+p.chatbot {
+    color: white;
+    background: black;
+    text-align: right;
+}
+
+.center {
+    text-align: center;
+}
+
+.hidden {
+    display: none;
+}
+
+.typing {
+    background: yellow;
+    color: black;
+}
+
+
+#loginErrorsDiv {
+	clear: both;
+    border-top: 1px #4a4a4a solid;
+    white-space: pre;
+    display: none;
+    padding: 2px 0px 0px 2px;
+	color: darkred;
+}
+
+/*****
+*
+*   Configuration panel for demos
+*************************************
+*/
+
+.configHeader {
+    font-weight:bold;
+    padding-bottom:5px;
+    padding-top:5px;
+}
+
+
+.configPanel {
+    display:none;
+    width: 400px;
+    height: 400px;
+    min-width:200px;
+    padding-left:10px;
+    padding-right:10px;
+}
+
+.configPanel iframe {
+    width: 100%;
+    height: 100%;
+
+}
+
+
+#configLink {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+
+/**
+*Widget elements
+*/
+
+
+.presav-chatPanel .button-widget {
+    border: none;
+    color: white;
+    padding: 4px 6px;
+    text-align: center;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+
+.presav-chatPanel .radio-widget {
+    border: none;
+    color: white;
+    padding: 4px 6px;
+    text-align: center;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    margin: 4px 2px;
+    
+}
+
+
+
+/* Note: was content in style.css */
+@CHARSET "ISO-8859-1";
+
+/**
+ *  Copyright 2018 Avaya Inc. All Rights Reserved.
+ *
+ * Usage of this source is bound to the terms described in
+ * licences/License.txt
+ *
+ * Avaya - Confidential & Proprietary. Use pursuant to your signed agreement or
+ * Avaya Policy
+ */
+
+
+/*
+ *	COBROWSE
+ *	****************************************************************
+ */
+ #cobrowse {
+ 	width: 100%;
+ 	height: 800px; 
+ 	display: none;
+}
+
+#showCoBrowse {
+	position: absolute;
+	right: 50px;
+	top: 15px;
+	display: none;
+}
+
+
+/*
+ *  Demo cobrowse form on home.html
+ */
+
+.cobrowse-demo-form td.cui-form-label {
+    width: 35%;
+    text-align: right;
+    padding: 5px;
+}
+
+ 
+.cobrowse-demo-form span.asterisk {
+    color: red;
+    font-size: 15px;
+    display: inline-block;
+ }
+ 
+ .cobrowse-demo-form input {
+    width: 200px;
+ }
+ 
+ .cobrowse-demo-form #pers_email_info {
+    width: 20px;
+ }
+ 
+#contextConfigLink {
+    position: absolute;
+    right: 10px;
+    top: 10px;  
+}
+
+/**
+ *  Subscription panel to demonstrate customer journey.
+ *
+ */
+#subscribePanel{
+    width: 120px;
+    display:none;
+}
+	
+#subscribePanel button{
+    width: 48%;
+    height: 30px;
+}
+
+#subscribeLink {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    width: 50px;
+}
+
+#subscribeLink img {
+    width:30px; height:30px;
+}
+
+#subscribeInputDiv {
+    display:none;
+}
+
+#subscribeStatus {
+    padding:5px;
+}
+
+#contextDisplayDialog{
+    white-space: pre;
+}
+
+
+/*---------------------------------------------------------*/
+/*---------------------[Presidio CSS]----------------------*/
+/*---------------------------------------------------------*/
+.presav-chatPanel.ui-widget {
+	color: #333; 
+	font-family: Gotham, "Helvetica Neue", Helvetica, Arial, "sans-serif";
+}
+
+.presav-chatPanel.ui-widget-content.ui-widget {
+	border-color: rgb(0,0,0);
+}
+
+.presav-chatPanel.ui-widget-content a {
+	color: #006FBA !important;
+}
+
+.presav-chatPanel .ui-corner-all,
+.presav-chatPanel.ui-corner-all {
+	border-radius: 0;
+}
+
+.presav-chatPanel.ui-dialog {
+	padding: 0;
+}
+
+.presav-chatPanel .ui-widget-header {
+	background: #006FBA !important; 
+	border: none; 
+	font-weight: normal;
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-content {
+	padding: 15px;
+	overflow: hidden;
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-button {
+	padding: 0 15px 10px 15px; outline: none
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-buttonpane {
+	border: none; margin: 0; padding: 0 15px 15px 15px;
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-buttonpane button {
+	margin: 0; outline: none;
+}
+
+.presav-chatPanel .ui-widget-content {
+	border: none;
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset {
+	float: none;
+}
+
+.presav-chatPanel.ui-dialog .ui-dialog-titlebar-close,
+.presav-chatPanel.ui-dialog .ui-dialog-titlebar-close:hover,
+.presav-chatPanel.ui-dialog .ui-dialog-titlebar-close:active,
+.presav-chatPanel.ui-dialog .ui-dialog-titlebar-close:focus {
+	border-radius: 0; 
+	outline: none;
+	background: transparent; 
+	right: 9px !important;
+    border: 1px solid #FFF;
+    width: 20px !important;
+    height: 20px !important;
+    margin: inherit !important;
+	top: inherit !important;
+	/* margin: -10px 0 0 !important; */
+    padding: 0 !important;
+	text-align: center;
+}
+
+	.presav-chatPanel .ui-dialog-titlebar-minimize{
+		/* base taken from jquery-ui.min.css:
+		position: absolute;
+		right: 40px;
+		top: inherit;
+		width: 20px;
+		padding: 1px;
+		height: 20px; */
+		
+		position: absolute;
+		border-radius: 0;
+		outline: none;
+		background: transparent;
+		right: 38px !important;
+		border: 1px solid #FFF;
+		width: 20px !important;
+		height: 20px !important;
+		margin: inherit !important;
+		top: inherit !important;
+		/* margin: -10px 0 0 !important; */
+		padding: 0 !important;
+		text-align: center;
+
+	}
+
+
+.presav-chatPanel .ui-button,
+.presav-chatPanel .ui-button:hover,
+.presav-chatPanel .ui-button:active,
+.presav-chatPanel .ui-button:focus {
+    width: 100% !important; 
+	border: none !important; 
+	color: #fff !important; 
+	padding: 8px 10px !important; 
+	border-radius: 3px !important; 
+	margin: 5px 0 5px 0 !important; 
+	background: #39b3d7 !important; 
+	font-weight: normal !important;
+
+}
+
+.presav-chatPanel.ui-widget input, 
+.presav-chatPanel .formField input {
+    border: 1px solid #ccc; 
+	padding: 5px 10px; 
+	color: #555; 
+	font-size: 15px; 
+	display: inline-block; 
+	box-sizing: border-box; 
+}
+
+.presav-chatPanel .formField input {
+	border: 1px solid #ccc; 
+	padding: 5px 10px; 
+	color: #555; 
+	font-size: 15px; display: 
+	inline-block; 
+	box-sizing: border-box; 
+}
+
+.presav-notice, #user-chat, #user-chat-last,
+#phone-country, #phone-area, #phone-chat,
+#pageTopic,
+#email-chat, #address-chat, #reason, #outmessage {
+	margin: 5px 0 10px 0;
+}
+
+.phone-country-tip, .phone-area-tip, .phone-chat-tip{
+	position: relative;
+	padding-top: 20px !important;
+}
+.phone-country-tip:after, .phone-area-tip:after, .phone-chat-tip:after{
+	position: absolute;
+	top: 3px;
+	left:2px;
+	font-size: 92%;
+}
+.phone-country-tip:after{content: 'Country Code';} 
+.phone-area-tip:after{content: 'Area Code';} 
+.phone-chat-tip:after{content: 'Phone Number';}
+
+
+
+.presav-notice{
+	font-size: 85%;
+}
+
+#loginErrorsDiv {
+	margin: 15px 0;
+}
+
+/* ---- SF Added --- */
+.presav-chatPanel .ui-widget-header .ui-icon:hover,
+.presav-chatPanel .ui-icon,
+.presav-chatPanel .ui-widget-content .ui-icon,
+.presav-chatPanel .ui-state-hover .ui-icon,
+.presav-chatPanel .ui-state-focus .ui-icon,
+.presav-chatPanel .ui-button:hover .ui-icon,
+.presav-chatPanel .ui-button:focus .ui-icon {
+    background-image: url(libs/jquery-ui/images/ui-icons_ffffff_256x240.png) !important;
+}
+
+
+#chatPanel input[type=text]{
+	width: 100%;
+}
+.presav-w-50{
+	float: left; 
+	width: 50%; 
+	padding-right: 10px;
+}
+div.presav-w-50:last-child{
+	padding-right: 0 !important;
+}
+.presav-cb{
+	clear: both;
+}
+.presav-chatPostInstructions{
+	font-size: 75%;
+	clear: both;
+	color: #999;
+}
+.presave-checkbox-label{
+	cursor:pointer;
+	padding-left: 3px;
+	padding-right: 3px;
+}
+.presav-checkbox-label:hover{
+	outline: 1px dashed #ccc;
+}
+.presav-required{
+	font-weight: 900;
+	color: darkred;
+	font-size: 104% !important;
+	top: -.1em !important;
+	padding: 0 2px;
+}
+#openbutton-chat > span{
+	padding-left: 40px;
+	background-image: url(./comments-solid.svg) !important;
+	background-repeat: no-repeat !important;
+	background-position: 10px 0px !important;
+	background-size: 16px 16px !important;
+}
+#sendbutton-chat > span{
+	padding-left: 40px;
+	background-image: url(./paper-plane-solid.svg) !important;
+	background-repeat: no-repeat !important;
+	background-position: 10px 0px !important;
+	background-size: 16px 16px !important;
+}
+#controls {
+	left: -15px;
+	right: -15px;
+	padding: 7px 15px;
+	border-top: 1px solid #999;
+}
+#controls .controls-user-message{
+	width: 75%;
+}
+#controls .controls-user-message input{
+	padding-bottom: 10px !important;
+}
+#controls .controls-user-submit{
+	width: 25%;
+}
+// let's just use our own clearing divs
+#usersDiv:after,
+#controls:after{
+	content: '';
+	clear: both;
+}
+
+.presav-message-wrap{
+	border-bottom: 1px solid #999;
+	padding: 12px 15px;
+}
+.presav-message-wrap:first-child{
+	border-top: 1px solid #999;
+}
+.presav-message-wrap:after{
+	content: '';
+	clear: both;
+}
+.presav-timestamp{
+	float: right;
+	color: #999;
+	font-size: 85%;
+}
+.presav-messager{
+	font-size: 111%;
+	font-weight: 700;
+}
+.sent .presav-messager{
+	color: #39b3d7;
+}
+
+.presav-message{
+	padding-top: 10px;
+	clear: both;
+}
+.presav-chat-error{
+	color: darkred;
+}
+
+.presav-minimize #chatPanel{
+	display: none !important;
+	bottom: 0 !important;
+	right: 10px !important;
+	position: fixed !important;
+}
+.presav-minimize .ui-dialog-titlebar{
+	cursor: default !important;
+}
+
+.presav-base-icon{
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background-size: 16px 16px;
+	margin-right: 3px !important;
+	vertical-align: bottom;
+	opacity: .75; /* from black to slightly lighter color */
+}
+.presav-print{
+	background-image: url(./glyphicons-basic-16-print.svg);
+}
+.presav-copy{
+	background-image: url(./glyphicons-basic-30-clipboard.svg);
+}
+
+/* Very few media queries required */
+@media only screen and (max-width: 767px) {
+	.chat-interface-print, .chat-interface-copy{
+		display: none;
+	}
+	#openbutton-chat > span{
+		padding-left: 0 !important;
+		background: none !important;
+	}
+	#sendbutton-chat > span{
+		padding-left: 0 !important;
+		background: none !important;
+	}
+	.presav-chatInitLogo, #chatInterfaceHeader{
+		background-size: 75% !important;
+	}
+	.phone-country-tip:after{
+		content: 'Country' !important;
+	} 
+}
+

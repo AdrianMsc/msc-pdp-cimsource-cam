@@ -1,0 +1,267 @@
+const choicesInstances = new Map()
+const choicesConfigs = new Map()
+const choiceBindingAttributeName = "data-bind-choices"
+
+/** Bound to UI events */
+const _bindChoicesToSelects = () => {
+    document
+        .querySelectorAll(`[${choiceBindingAttributeName}]`)
+        .forEach((select) => {
+            const id = select.getAttribute(choiceBindingAttributeName)
+            const label = select.getAttribute('data-label')
+            const choices = new Choices(select, _getChoicesConfig(id, label))
+            choicesInstances.set(id, choices)
+            _bindToInput(id, choices)
+            _transferAdditionalClassesToChoices(choices)
+        })
+}
+
+const _bindToInput = (id, choicesInstance) => {
+    const select = choicesInstance.passedElement.element
+    if (select.dataset.hasOwnProperty("bindToInput")) {
+        const inputToBind = document.querySelector(`[data-select-id="${id}"]`)
+
+        if (!inputToBind) {
+            console.error("Input to bind not found")
+            return
+        }
+
+        choicesInstance.passedElement.element.addEventListener(
+            "choice",
+            (event) => {
+                inputToBind.value = event.target.value
+                const inputEvent = new Event("input", {
+                    bubbles: true,
+                    cancelable: false,
+                })
+                inputToBind.dispatchEvent(inputEvent)
+            }
+        )
+    }
+}
+
+const _getChoicesConfig = (id, label) => {
+    return {
+        searchEnabled: false,
+        shouldSort: false,
+        itemSelectText: "",
+        removeItemButton: false,
+        placeholder: true,
+        placeholderValue: "",
+        labelId: label,
+        ...choicesConfigs.get(id),
+    }
+}
+
+const _transferAdditionalClassesToChoices = (choices) => {
+    const dataset = choices.passedElement.element.dataset
+    const toInner = dataset.addClassInner !== "false"
+    const originalClasses = dataset.class?.split(" ") || []
+    const outerContainer = choices.containerOuter.element
+    const innerContainer = choices.containerInner.element
+    originalClasses.forEach((cls) => {
+        toInner && innerContainer.classList.add(cls)
+        outerContainer.classList.add(cls)
+    })
+}
+
+const _validateParts = () => {
+    const parts = document.querySelectorAll("[data-part-id]")
+    parts.forEach((part) => {
+        const partId = part.dataset.partId
+        const quantityInput = part.querySelector(".part-quantity")
+        const lengthInput = part.querySelector(".part-length")
+        const quantitySelect = part.querySelector(`.quantity-select`)
+        const lengthSelect = part.querySelector(`.length-select`)
+        const quantityError = part.querySelector(
+            `[data-error-for="${partId}-quantity"]`
+        )
+        const lengthError = part.querySelector(
+            `[data-error-for="${partId}-length"]`
+        )
+        const addToCartButton = part.querySelector(".add-to-cart")
+
+        const validate = (
+            event,
+            selectElement,
+            errorElement,
+            otherErrorElement
+        ) => {
+            const input = event.target
+            const inputValue = Number(input.value || 0)
+            const minValue = Number(input.dataset.min)
+            const isMediumRestricted = addToCartButton.dataset?.isMediumRestricted === "true"
+            const otherElementHasError =
+                otherErrorElement && !otherErrorElement.classList.contains("hidden")
+
+            if (errorElement) {
+                errorElement.classList.toggle(
+                    "hidden",
+                    inputValue >= minValue && inputValue % minValue == 0
+                )
+                addToCartButton.disabled =
+                    otherElementHasError ||
+                    inputValue < minValue ||
+                    inputValue % minValue !== 0 ||
+                    isMediumRestricted
+            }
+
+            if (inputValue < minValue) {
+                const errorLabel = event.target.dataset.label
+                errorElement.innerHTML = `${errorLabel} cannot be less than ${minValue}`
+                input.classList.add("errorClass")
+                selectElement && selectElement.classList.add("error-border")
+                event.stopPropagation()
+                addToCartButton.classList.add("cursor-not-allowed")
+                return
+            }
+
+            if (inputValue % minValue !== 0) {
+                errorElement.innerHTML = `Enter in multiples of ${minValue}`
+                input.classList.add("errorClass")
+                selectElement && selectElement.classList.add("error-border")
+                return
+            }
+
+            (!otherElementHasError && !isMediumRestricted) && addToCartButton.classList.remove("cursor-not-allowed")
+            input.classList.remove("errorClass")
+            selectElement && selectElement.classList.remove("error-border")
+        }
+
+        quantityInput &&
+            quantityInput.addEventListener("input", (event) =>
+                validate(event, quantitySelect, quantityError, lengthError)
+            )
+        lengthInput &&
+            lengthInput.addEventListener("input", (event) =>
+                validate(event, lengthSelect, lengthError, quantityError)
+            )
+    })
+}
+
+const addToCartComputeVals = (partId) => {
+    const part = document.getElementById(`table-part-${partId}`)
+    const { price, priceDisplayText, minimumOrderQuantity, referenceNumber } = part.dataset || {}
+    const sanitizedPrice = price?.replace(/,/g, "")
+
+    const quantityInput = part.querySelector('.part-quantity')
+    const quantity = quantityInput ? quantityInput.value : ''
+
+    const cutToLength = part.querySelector('.part-length')
+    const length = cutToLength ? cutToLength.value : ''
+
+    const singularPrice = Number(sanitizedPrice) / Number(minimumOrderQuantity)
+    const calculatedPrice = length ?
+        Number(singularPrice) * Number(length) * Number(quantity) :
+        Number(singularPrice) * Number(quantity)
+
+    const finalPrice = `$${utils.formatNumberWithCommas(calculatedPrice.toFixed(2))}`
+
+    return {
+        finalPrice: finalPrice,
+        webPrice: priceDisplayText,
+        quantity,
+        length,
+        ...(referenceNumber ? { pxNumber: referenceNumber } : {})
+    }
+}
+
+//
+// bind 
+//
+
+const bind = {
+    addToList: () => {
+        const addToListLinks = f('.add-to-list-link')
+        if(addToListLinks){
+            addToListLinks.forEach((addToListLink) => {
+                addToListLink.addEventListener('click', () => {
+                    let partNumber = addToListLink.getAttribute('data-part-number')
+                    let referenceNumber = addToListLink.getAttribute('data-reference-number')
+                    let isWidget = addToListLink.getAttribute('data-is-widget') === "true"
+                    let widgetText = isWidget ? 'widget ' : ''
+                    sendLinkEvent({
+                        event_name: `product compare ${widgetText}add to list`,
+                        part_number: `${partNumber}`,
+                        reference_number: `${referenceNumber}`
+                    })
+                })
+            })
+        }
+    }
+}
+
+//
+// functionality
+//
+
+const productCompareShowMoreLess = () => {
+    const showMoreRows = f('.product-compare-show-more')
+    if(showMoreRows) {
+        showMoreRows.forEach((productCompareTableRow) => {
+            productCompareTableRow.classList.toggle('f-hidden')
+        })
+        sendLinkEvent({
+                event_name: 'pdp click',
+                ui_link_name: 'compare alternate products',
+        })
+        togglePlusSign()
+    }
+}
+
+const togglePlusSign = () => {
+    const sign = document.getElementById('showAllSectionIcon')
+    if (!sign) {
+        console.error('Element with ID "showAllSectionIcon" not found')
+        return
+    }
+    const hasPlus = sign.classList.contains('fa-plus')
+    sign.classList.remove('fa-plus', 'fa-minus') // Remove both classes
+    sign.classList.add(hasPlus ? 'fa-minus' : 'fa-plus') // Add the opposite
+}
+
+const printAltsPage = () => {
+    window.print()
+}
+
+const syncInput = (event) => {
+    var el = event && event.target ? event.target : null;
+    if (!el) return;
+    try {
+        //trim excess 
+        if (el.value && el.maxLength && el.value.length > el.maxLength) {
+            el.value = el.value.slice(0, el.maxLength);
+        }
+
+        //grab nearest select
+        var container = el.closest ? el.closest('div.select-list') : (el.parentElement && el.parentElement.parentElement ? el.parentElement.parentElement : null);
+        var sel = container ? container.querySelector('select') : null;
+
+        //is input is blank, proceed to clear select
+        if (el.value === '') {
+            var bindId = sel.getAttribute(choiceBindingAttributeName);
+            var choicesInstance = bindId ? choicesInstances.get(bindId) : null;
+            if (choicesInstance) {
+                choicesInstance.removeActiveItems();
+            }
+        }
+    } catch (e) { /* swallow */ }
+
+}
+
+
+
+function showQuantityBreakLightbox(basePartNumber){
+    lightboxShow(`#quantity-break-lightbox-stage-${basePartNumber}`)
+}
+
+function triggerConfirmAlternateLightbox(basePartNumber){
+    lightboxShow(`#confirm-alternate-lightbox-stage-${basePartNumber}`)
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    _bindChoicesToSelects()
+    _validateParts()
+    bind.addToList()
+    
+})

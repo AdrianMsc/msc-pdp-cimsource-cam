@@ -1,0 +1,313 @@
+var disableChatUI = false;
+var _MSCGlobal_;
+
+$(document).ready(function () {
+
+    if (typeof chatParams !== 'undefined' && typeof loadAvayaChat !== 'undefined' && loadAvayaChat) {
+        _MSCGlobal_ = {
+            chatFlagValue: chatParams.chatFlagValue,
+            allowedTime: chatParams.allowedTime,
+            userType: chatParams.userType,
+            avayaGuestFlagEnabled: chatParams.avayaGuestFlagEnabled,
+            punchOutSessionObject: chatParams.punchOutSessionObject,
+            avayaPOFlagEnabled: chatParams.avayaPOFlagEnabled,
+            firstName: chatParams.firstName,
+            lastName: chatParams.lastName,
+            email: chatParams.email,
+            phoneNumber: chatParams.phoneNumber,
+
+            chatPostInstructions: 'Chat is available Monday through Friday from 8:00AM - 8:00 PM EST. U.S. Customers: For prompt service please call our MSC eCommerce Customer Care Team at 800-753-7970. International Customers: For prompt service please call our International Customer Care Team at 1-888-080-2048 (within the U.S.) or  001-248-200-4420 (outside the U.S.).  Thank you.',
+
+            cdnLocation: chatParams.cdnLocation,
+
+            hookStartChatError: null,
+            hookStartChatDataChanged: null,
+            hookRefreshChatAndResume: null,
+            hookRefreshChatAndClose: null,
+            hookAcceptAgentLink: null,
+
+            initiallyShowChatStatus: false,
+            initCobrowse: false,
+            reasonOptions: [
+                [chatParams.interactionTypeSale, 'Placing an order or quote'],
+                [chatParams.interactionTypeWebsite, 'The website'],
+                [chatParams.interactionTypeService, 'Status of an order'],
+                [chatParams.interactionTypeProductInfo, 'Technical Product Information'],
+                [chatParams.interactionTypeOther, 'Other']
+            ]
+        };
+    }
+
+
+    if (chatFlagValue == 0) {
+        $("#help-options .help-right.chat,#help-options .help-left.chat").attr("onclick", "").click(function () {
+            unavailableChat();
+        });
+    } else if (chatFlagValue == 2 && typeof loadAvayaChat !== 'undefined' && loadAvayaChat) {
+        var pageUrl = window.location.href;
+        if (-1 == pageUrl.indexOf("catalogView=true")) {
+            webChat.setupWebChat(typeof _MSCGlobal_ !== 'undefined' ? _MSCGlobal_ : {});
+        }
+        if ('undefined' != typeof _MSCGlobal_ && 'undefined' != typeof _MSCGlobal_.chatFlagValue) {
+            $("#help-options .help-right.chat,#help-options .help-left.chat").attr("onclick", "").click(function () {
+                advancedChat(
+                    _MSCGlobal_.chatFlagValue,
+                    _MSCGlobal_.allowedTime,
+                    _MSCGlobal_.userType,
+                    _MSCGlobal_.avayaGuestFlagEnabled,
+                    _MSCGlobal_.punchOutSessionObject,
+                    _MSCGlobal_.avayaPOFlagEnabled
+                );
+            });
+        }
+    }
+
+    if ('undefined' != typeof _MSCGlobal_ && _MSCGlobal_.chatFlagValue === 2 && _MSCGlobal_.allowedTime) {
+        if (_MSCGlobal_.userType === 'G' && _MSCGlobal_.avayaGuestFlagEnabled) {
+            bottomLiveChat();
+        } else if (_MSCGlobal_.userType === 'G' && !_MSCGlobal_.avayaGuestFlagEnabled) {
+            //do nothing
+        } else if (_MSCGlobal_.punchOutSessionObject && _MSCGlobal_.avayaPOFlagEnabled) {
+            bottomLiveChat();
+        } else if (_MSCGlobal_.punchOutSessionObject && !_MSCGlobal_.avayaPOFlagEnabled) {
+            //do nothing
+        } else {
+            bottomLiveChat();
+        }
+    }
+
+});
+
+function chatFlagOff() {
+    unavailableChat();
+}
+
+function advancedChat() {
+    if(disableChatUI){
+        unavailableChat();
+        return false;
+    } else {
+        var referer = window.location.pathname;
+        if ('undefined' != typeof _MSCGlobal_ && _MSCGlobal_.allowedTime) {
+            if (_MSCGlobal_.userType === 'G' && _MSCGlobal_.avayaGuestFlagEnabled) {
+                invokeChatPingCall();														// hand-off: promise
+            } else if (_MSCGlobal_.userType === 'G' && !_MSCGlobal_.avayaGuestFlagEnabled) {
+                notRegisteredChat(referer);													// paint function
+            } else if (_MSCGlobal_.punchOutSessionObject && _MSCGlobal_.avayaPOFlagEnabled) {
+                invokeChatPingCall();														// hand-off: promise
+            } else if (_MSCGlobal_.punchOutSessionObject && !_MSCGlobal_.avayaPOFlagEnabled) {
+                unavailableChat();															// paint function
+            } else {
+                invokeChatPingCall();														// hand-off: promise
+            }
+        } else if ('undefined' === typeof _MSCGlobal_ && 'undefined' !== typeof chatFlagValue && chatFlagValue == 2 && typeof loadAvayaChat !== 'undefined' && !loadAvayaChat) {
+            if (chatParams.userType === 'G' && !chatParams.avayaGuestFlagEnabled) {
+                notRegisteredChat(referer);
+            } else if (chatParams.punchOutSessionObject && !chatParams.avayaPOFlagEnabled) {
+                unavailableChat();
+            }
+        }
+        else {
+            missedChat();																	// paint function
+        }
+        return false;
+    }
+}
+
+
+function invokeChatPingCall() {
+    var url =
+        links.getEstimatedWaitTimeUrl();
+    var data = {
+        serviceMap: {
+            1: {
+                attributes: {
+                    Channel: ["Chat"],
+                },
+                priority: 5,
+            },
+        },
+    };
+    let currentTime = new Date();
+    let estTimeString = currentTime.toLocaleString("en-US", {
+        timeZone: "America/New_York",
+    });
+    let estTime = new Date(estTimeString);
+    $.ajax(url, {
+        type: "POST",
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify(data),
+        cache: false,
+        async: false,
+        success: function (dataRes) {
+            if (
+                estTime.getHours() >= 8 &&
+                estTime.getHours() < 20 &&
+                estTime.getDay() > 0 &&
+                estTime.getDay() < 6
+            ) {
+                (parseInt(dataRes.serviceMetricsResponseMap["1"].metrics.ResourceStaffedCount) > 0)
+                    ? availableChat()
+                    : unavailableChat(); // paint function
+                // availableChat();
+            } else {
+                //availableChat();
+                missedChat(); // paint function
+            }
+        },
+        error: function () {
+            missedChat(); // paint function
+            //availableChat();
+        },
+    });
+}
+
+function bottomLiveChat() {
+    $('.bottom_chat_btn').remove();
+    var chat_button = '<button class="bottom_chat_btn">Live Chat</button>';
+    $("body").prepend(chat_button);
+    hideBtnChat();//$('.bottom_chat_btn').fadeIn(400);
+    $('.bottom_chat_btn').click(function () {
+        if ((document.URL).indexOf('ui/OrderHistory') > -1) {
+            populateOHUserDetails();
+        }
+        advancedChat();
+    });
+    var cookieHeight = $(".cookie_consent").outerHeight();
+    if (undefined == cookieHeight)
+        cookieHeight = 0;
+    $(".bottom_chat_btn").css("bottom", cookieHeight + 10);
+}
+
+function createChatModal(contentObj){
+    var chatModalHtml = 
+        '<div id="chat-modal-overlay">'+
+            '<div id="chat-modal-overlay-content">'+
+                '<div style="text-align: right; cursor: pointer; margin-bottom: 4px" onclick="$(\'#chat-modal-overlay\').hide()">x</div>'+
+                '<img src="https://cdn.mscdirect.com/global/application-content/images/header/logo.png?v=244" id="msc-logo">'+
+                '<h3 style="color: #006699;">' + contentObj.title + '</h3>'+
+                '<p>' + contentObj.message + '</p>'+
+            '</div>'+
+        '</div>';
+    return chatModalHtml;
+}
+
+function missedChat() {
+    $("#chat-modal-overlay").remove();
+    var chatContent = {
+        title: 'We\'re sorry we missed you...',
+        message: 'For Website Support you can call us toll-free at 1-800-753-7970 (Monday through Friday 7am-10pm ET) or for General Customer Care services you can call us toll free at 1-800-645-7270 (Monday through Friday 7am-11pm ET and Saturday 8am-5pm ET) or email us at <a href="mailto:CustomerCare@mscdirect.com">CustomerCare@mscdirect.com</a>'
+    }
+    var chat_missed = createChatModal(chatContent);
+    if ($("#chat-modal-overlay").length == 0) {
+        $("body").prepend(chat_missed);
+    }
+    $("#chat-modal-overlay").show();
+}
+
+function availableChat() {
+    initChat(
+        _MSCGlobal_.userType,
+        _MSCGlobal_.firstName,
+        _MSCGlobal_.lastName,
+        _MSCGlobal_.email,
+        _MSCGlobal_.phoneNumber
+    );
+}
+
+function unavailableChat() {
+    $("#chat-modal-overlay").remove();
+    var chatContent = {
+        title: 'We\'re sorry, chat is currently unavailable.',
+        message: 'For Website Support you can call us toll-free at 1-800-753-7970 (Monday through Friday 7am-10pm ET) or for General Customer Care services you can call us toll free at 1-800-645-7270 (Monday through Friday 7am-11pm ET and Saturday 8am-5pm ET) or email us at <a href="mailto:CustomerCare@mscdirect.com">CustomerCare@mscdirect.com</a>'
+        /*
+        message: 'Thank you for visiting MSCDirect.com. Our chat feature is currently unavailable for an upgrade to enhance the chat experience. Please contact our Customer Care team at 1-800-645-7270 or send an email to <a href="mailto:CustomerCare@mscdirect.com">CustomerCare@mscdirect.com</a> for further support.'
+        */
+    }
+    var chat_unavailable = createChatModal(chatContent);
+    if ($("#chat-modal-overlay").length == 0) {
+        $("body").prepend(chat_unavailable);
+    }
+    $("#chat-modal-overlay").show();
+}
+
+function notRegisteredChat(referer) {
+    var chat_notReg = 
+        '<div id="chat-overlay">'+
+            '<div id="chat-overlay-content">'+
+                '<div style="text-align:right;cursor:pointer;font-size:12px;margin-bottom:4px" onclick="$(\'#chat-overlay\').hide()">X</div>'+
+                '<div id="chat-overlay-left">'+
+                    '<p><strong>Chat with MSC!</strong></p>'+
+                    '<p>We\'re here to help - if you have any questions about our full line of products please login to chat with our customer service representatives or metalworking experts.</p>'+
+                    '<p>After logging in click "Chat" at the top of any page to begin!</p>'+
+                    '<div class="chat-login-button-container">'+
+                        '<button class="btnchat btnchat-primary btnchat-lg" type="button" onclick="document.location=\'/webapp/wcs/stores/servlet/LogonForm?chatRef=' + referer + 'intcmp=RegisteredChat_Header_Icon_2014_v1\'">Login to Chat with MSC Now!</button>'+
+                    '</div>'+
+                '</div>'+
+                '<div id="chat-overlay-right">'+
+                    '<p><strong>Don\'t have an account?</strong></p>'+
+                    '<p>Not a problem, you can <a href="/RegisterNewUserView">quickly register</a>here. </p>'+
+                '</div>'+
+            '</div>'+
+        '</div>';
+    if ($("#chat-overlay").length == 0) {
+        $("body").prepend(chat_notReg);
+    }
+    $("#chat-overlay").show();
+}
+
+function isChatAllowed() {
+    var flagData;
+    var isChatAllowed = false;
+    $.ajax({
+        url: '/getDetails',
+        async: false,
+        contentType: 'text/plain',
+        type: 'GET',
+        dataType: 'text',
+        xhrFields: {
+            withCredentials: true
+        },
+        cache: false,
+        success: function (data) {
+            if (data) {
+                flagData = $.parseJSON(data);
+
+                isChatAllowed = flagData.AppData.allowedChatTime == 'true';
+            }
+        },
+        error: function (data) {
+            isChatAllowed = false;
+            console.log('Live chat: Failed to load customer info.')
+        }
+    });
+    return isChatAllowed;
+}
+//Hide Live Chat Button in Mobile View
+function hideBtnChat() {
+    if ($(window).width() < 768) {
+        $(".bottom_chat_btn").hide();
+    }
+    else {
+        $(".bottom_chat_btn").show()
+    }
+}
+
+$(document).ready(function () {
+    hideBtnChat();
+});
+
+$(window).resize(function () {
+    hideBtnChat();
+});
+
+//Chat Pop Up In Customer-Service Page
+function flagBasedChat() {
+    if (chatParams.chatFlagValue == 1)
+        popChat();
+    else if (chatParams.chatFlagValue == 2)
+        advancedChat();
+    else
+        chatFlagOff();
+}

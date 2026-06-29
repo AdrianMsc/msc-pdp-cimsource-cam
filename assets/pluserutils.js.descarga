@@ -1,0 +1,106 @@
+function getPLUserRedirectURL(customRef) {
+  const referrer = window.location.pathname + window.location.search;
+  if (customRef) {
+    return '/ui/identity/login?gpu=true&plRedirect=true&redirect=' + customRef;
+  }
+  return (
+    '/ui/identity/login?gpu=true&plRedirect=true&redirect=' +
+    referrer?.replace(/^\/|\/$/g, '')
+  );
+}
+
+function getCookieByName(Cookie, cookieNameKey) {
+  const cookieArray = cookieParser(Cookie);
+
+  const dataArr = cookieArray?.filter((cookieNameArr) =>
+    isEqual(cookieNameArr?.[0], cookieNameKey),
+  );
+  return stringValue(dataArr?.[0]?.[1]);
+}
+function decodeURIComponentSafe(uri) {
+  if (!uri) {
+    return uri;
+  }
+  try {
+    return decodeURIComponent(uri.replace(/%(?![\d][0-9a-fA-F]+)/g, '%25'));
+  } catch (err) {
+    return uri;
+  }
+}
+function arrayGet(arrayObject = []) {
+  return (arrayObject && Array.isArray(arrayObject) && arrayObject) || [];
+}
+function decodeURIComponentSafe(uri) {
+  if (!uri) return uri;
+  try {
+    return decodeURIComponent(uri.replace(/%(?![\d][0-9a-fA-F]+)/g, '%25'));
+  } catch (err) {
+    return uri;
+  }
+}
+function isEqual(value1 = '', value2 = '') {
+  return value1 === value2;
+}
+
+function stringValue(value, defaultValue = '') {
+  return value || defaultValue;
+}
+
+function isEmpty(value) {
+  return value === '';
+}
+
+function cookieParser(Cookie, cookieName) {
+  if (Cookie === undefined || Cookie === '') {
+    return [];
+  }
+
+  const pairs = arrayGet(Cookie?.split(';'));
+  const splittedPairs = arrayGet(
+    pairs?.map((ckName) => ckName?.trim()?.split('=')),
+  );
+
+  const cookieList = arrayGet(
+    splittedPairs?.filter((entry) => {
+      const key = decodeURIComponentSafe(entry[0]?.trim())?.trim();
+      const value = decodeURIComponentSafe(entry[1]?.trim());
+      return {
+        [key]: value,
+      };
+    }),
+  );
+
+  if (cookieName) {
+    const getCookieValue = cookieList?.filter((cookieValueArr) =>
+      isEqual(cookieValueArr?.[0], cookieName),
+    );
+
+    return stringValue(getCookieValue?.[0]?.[1]);
+  } else {
+    return cookieList;
+  }
+}
+function isPlUserVerified(userType) {
+  const PLUserCookie = getCookieByName(document?.cookie, 'WCDE_IPL');
+  const uidCookie = getCookieByName(document?.cookie, 'WCDE_UID');
+  const uidActiveCookie = getCookieByName(document?.cookie, 'WCDE_UID_ACTIVE');
+  return isEqual(userType, 'R') && !isEmpty(PLUserCookie) && (isEmpty(uidCookie) || isEmpty(uidActiveCookie));
+}
+
+function isGuestUser() {
+  const PLUserCookie = getCookieByName(document?.cookie, 'WCDE_IPL');
+  const uidCookie = getCookieByName(document?.cookie, 'WCDE_UID');
+  return isEmpty(PLUserCookie) && isEmpty(uidCookie);
+}
+
+function verifyPLUser(usertype, event, redirectGuest = false, customRef = '') {
+  if (isPlUserVerified(usertype)) {
+    if (event) event?.preventDefault();
+    return window.location.replace(getPLUserRedirectURL(customRef));
+  } else if (isGuestUser() && redirectGuest) {
+    if (event) event?.preventDefault();
+    return window.location.replace('/ui/identity/logon');
+  } else {
+    return true;
+  }
+}

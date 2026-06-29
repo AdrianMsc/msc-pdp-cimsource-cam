@@ -1,0 +1,2318 @@
+let stickyHeight = 0;
+
+const getStickyNavHeight = () => {
+  let minimumHeight = 215;
+  stickyHeight = f('#product-sticky').getBoundingClientRect().height;
+  return Math.max(minimumHeight, stickyHeight);
+};
+
+const getStickyNavRevealPoints = () => {
+  const allNecessaryElementsExist = (elementArray) => {
+    if (!elementArray || !Array.isArray(elementArray)) return false;
+    for (elem in elementArray) {
+      if (!elementArray[elem]) return false;
+    }
+    return true;
+  };
+
+  // necessary elements
+
+  //checks the loaded pdp is non web sellable and switching targets
+  let addToCartButton = f('#add-to-cart-button');
+  if (addToCartButton === null) {
+    addToCartButton = f(".error-msg-container")[0];
+  }
+  const specificationsNavAnchor = f('#specifications-nav-anchor');
+  const sticky = f('#product-sticky');
+  const stickyDetails = f('#product-sticky-details');
+
+  if (allNecessaryElementsExist([addToCartButton, specificationsNavAnchor, sticky, stickyDetails])) {
+    // triggers
+    const addToCartBoxY = addToCartButton.getBoundingClientRect().top + window.scrollY;
+
+    const toggleStickyDetails = () => {
+      if (window.scrollY >= addToCartBoxY) {
+        if (!utils.isVisible(stickyDetails)) {
+          stickyDetails.classList.remove('f-hidden');
+          getStickyNavHeight();
+          getStickyNavRevealPoints();
+        }
+      } else {
+        if (utils.isVisible(stickyDetails)) {
+          stickyDetails.classList.add('f-hidden');
+          getStickyNavHeight();
+        }
+      }
+    };
+
+    const handlePageScroll = () => {
+      window.addEventListener('scroll', () => {
+        toggleStickyDetails();
+      });
+    };
+
+    toggleStickyDetails();
+    handlePageScroll();
+  }
+};
+
+const adjustPageDirectAnchor = () => {
+  let urlAnchor = getAnchorFromUrl();
+  if (urlAnchor) {
+    scrollToAnchor(urlAnchor);
+  }
+};
+
+const sendCustomBundleAnalytics = (event) => {
+  if(event.detail.xhr.responseURL.includes('/product/details/custom-bundles')) {
+  sendLinkEvent({
+    event_name: 'pdp click',
+    ui_link_name: 'bundle and save'
+  })
+}
+};
+
+const sendBundleAddToCartAnalytics = (bundleId, cardItems) => {
+  document.querySelector('body').dispatchEvent(new Event('addCartEvent', { bubbles: true }));
+  const productIds = [];
+  const descriptions = [];
+  const listPrices = [];
+  const webLowestPrices = [];
+  const quantities = [];
+  const ratings = [];
+  const reviews = [];
+  const bundleIdArr = [];
+
+  if (cardItems && Array.isArray(cardItems)) {
+    cardItems.forEach((part, index) => {
+      productIds.push(part?.basePartNumber);
+      descriptions.push(part?.shortDescription);
+      listPrices.push(String(part?.orderingInfo?.price || ''));
+      if (index === 0) {
+        webLowestPrices.push(String(part?.orderingInfo?.webLowestPrice || ''));
+      } else {
+        webLowestPrices.push(String(part?.alternatePartMatch?.promoPrice || ''));
+      }
+      quantities.push(String(part?.minQuantity || 1));
+      ratings.push(String(part?.rating?.totalRatings || 0));
+      reviews.push(String(part?.rating?.averageRating || 0));
+      bundleIdArr.push(bundleId);
+    });
+  }
+
+  sendLinkEvent({
+    event_name: 'cart add',
+    cart_add_location: 'bundle widget',
+    product_id: productIds,
+    bundle_id: bundleIdArr,
+    product_name: descriptions,
+    product_list_price: listPrices,
+    product_price: webLowestPrices,
+    product_quantity: quantities,
+    product_rating: ratings,
+    product_reviews: reviews,
+    widget_position: '',
+    widget_type: ''
+  });
+};
+
+const getAnchorFromUrl = () => {
+  let url = window.location.href;
+  if (utils.stringContains('#')) return `#${url.split('#')[1]}`;
+  else return false;
+};
+
+const bindProductPurchaseReviewLinkClick = () => {
+  const reviewLinks = f('.product-details-purchase-reviews-link');
+  reviewLinks.forEach((elem) => {
+    elem.addEventListener('click', (e) => {
+      e.preventDefault();
+      let anchorLink = e.target.getAttribute('href');
+      scrollToAnchor(anchorLink);
+    });
+  });
+};
+
+const scrollToAnchor = (anchorLink) => {
+  let scrollToElement = f(`a[name='${anchorLink.slice(1)}']`)[0];
+  let scrollToPosition = scrollToElement?.getBoundingClientRect().top;
+  if (scrollToPosition) {
+    scrollWindow(scrollToPosition + window.scrollY - getStickyNavHeight(), 0);
+  }
+  //window.history.replaceState({}, document.title, `${url}${anchorLink}`)
+};
+
+const toggleFeaturesBenefits = (elemId) => {
+  let fbElem = f(elemId);
+  if (fbElem) {
+    let lessElem = f(elemId + '-less');
+    let moreElem = f(elemId + '-more');
+    if (fbElem.classList.contains('clampAfterThird')) {
+      fbElem.classList.remove('clampAfterThird');
+      if (lessElem) {
+        lessElem.classList.remove('hidden');
+      }
+      if (moreElem) {
+        moreElem.classList.add('hidden');
+      }
+    } else {
+      fbElem.classList.add('clampAfterThird');
+      if (lessElem) {
+        lessElem.classList.add('hidden');
+      }
+      if (moreElem) {
+        moreElem.classList.remove('hidden');
+      }
+    }
+  }
+};
+
+const getByName = (elementName) => {
+  return document.getElementsByName(elementName);
+};
+
+const getElementValue = (nodeList, defaultValue) => {
+  return nodeList != undefined && nodeList.length > 0 ? nodeList[0].value : defaultValue;
+};
+
+const calculateItemInputPrice = (elemId, label = "") => {
+  let quantityElem = getByName(`${elemId}${label}`);
+  let quantityInputElem = getByName(`quantity${label}`);
+  let quantityErrorElem = getByName(`quantity-input-error${label}`);
+  let minimumOrderQuantity = priceObject?.minimumOrderQuantity || 1;
+
+  if (quantityElem != undefined && quantityInputElem != undefined) {
+    let quantity = getElementValue(quantityElem, 1);
+    let quantityInput = getElementValue(quantityInputElem, 1);
+    let cartErrorMessage = document.getElementById('cart-error-message');
+    if (Number(quantityInput) > 0 && (Number(quantityInput) % Number(minimumOrderQuantity) == 0)) {
+      if (quantityErrorElem != undefined) {
+        quantityErrorElem[0].innerHTML = '';
+      }
+      if (quantityElem[0] != undefined) {
+        quantityElem[0].value = quantityInput;
+      }
+      quantityElem[0].classList.remove('errorClass');
+      quantityInputElem[0].classList.remove('errorClass');
+      if (cartErrorMessage != undefined) {
+        cartErrorMessage.style.display = 'none';
+      }
+      calculateItemPrice(elemId, label);
+    } else if (Number(quantityInput) % Number(minimumOrderQuantity) != 0) {
+      quantityElem[0].classList.add('errorClass');
+      quantityErrorElem[0].innerHTML = `Quantity must be in multiples of ${minimumOrderQuantity}`;
+    } else {
+      quantityElem[0].classList.add('errorClass');
+      quantityErrorElem[0].innerHTML = 'A specified quantity is required.';
+    }
+    highlightRangePrice(quantity);
+  }
+};
+
+const preventNnumericRange = (event) => {
+  if (event.key == 'Backspace' || event.key == 'Delete' || event.key == 'ArrowLeft' || event.key == 'ArrowRight') return;
+  const value = Number(event.target.value + event.key);
+  if (!value || (value <= 0 || value > 99999)) {
+    event.preventDefault();
+  }
+}
+
+const highlightRangePrice = (quantity) => {
+  const list = document.getElementsByClassName('quantity-range-price');
+  [...list]?.forEach((each) => {
+    const fromQuantity = Number(each.getAttribute('from'));
+    const toQuantity = Number(each.getAttribute('to'));
+    if (fromQuantity <= Number(quantity) && Number(quantity) <= toQuantity) {
+      each.classList.add('font-bold');
+    } else {
+      each.classList.remove('font-bold');
+    }
+  });
+};
+
+const preventNonNumericInput = (event) => {
+  if (!(event.keyCode === 8 || (event.key >= 0 && event.key <= 9) || (event.keyCode >= 37 && event.keyCode <= 40))) {
+    event.preventDefault();
+  }
+}
+
+const preventWheel = (event) => {
+  event.target.blur();
+};
+
+const updatePdpInputLength = (label = "") => {
+  document.getElementById('pdp-input-length').value = document.getElementById('select-length').value;
+  calculateItemPrice('quantity', label);
+};
+
+const showElementClass = (className) => {
+  const ele = document.getElementsByClassName(className)[0]
+  if (ele) {
+    ele.style.display = 'block'
+  }
+}
+const hideElementClass = (className) => {
+  const ele = document.getElementsByClassName(className)[0]
+  if (ele) {
+    ele.style.display = 'none'
+  }
+}
+const validateInputLength = (lengthInputElem, quantityValue = '') => {
+  let minimumOrderQuantity = priceObject?.minimumOrderQuantity || 1;
+  let lengthValue = getElementValue(lengthInputElem);
+  
+  if (lengthValue == '' || lengthValue <= 0 || isNaN(lengthValue)) {
+
+    lengthInputElem[0]?.classList?.add('errorClass');
+    document.getElementById("cart-error-message").style.display = "block";
+    showElementClass('pdp-length-error')
+    hideElementClass('pdp-length-multiple-error')
+  } else if (Number(lengthValue) % Number(minimumOrderQuantity) != 0) {
+
+    lengthInputElem[0]?.classList.add('errorClass');
+    document.getElementById("cart-error-message").style.display = "block";
+    showElementClass('pdp-length-multiple-error')
+    hideElementClass('pdp-length-error')
+  } else {
+    hideElementClass('pdp-length-error')
+    hideElementClass('pdp-length-multiple-error')
+    lengthInputElem[0]?.classList.remove('errorClass');
+    document.getElementById("cart-error-message").style.display = "none";
+  }
+};
+
+const calculateItemPrice = (elemId, label = "") => {
+  let quantityErrorElem = getByName(`quantity-input-error${label}`);
+  let quantityElem = getByName(`${elemId}${label}`);
+  let quantityInputElem = getByName(`pdp-quantity-input${label}`);
+  let lengthInputElem = getByName(`length${label}`);
+
+  let quantity = undefined;
+  let price = undefined;
+  let length = getElementValue(lengthInputElem) || 1;
+  let quantityInput = getElementValue(quantityInputElem, 1);
+
+  let totalPriceElem = document.getElementById('totalPriceId');
+  let totalPriceStickyNavElem = document.getElementById("totalPriceIdStickyNav") || {};
+
+  if (quantityErrorElem && quantityErrorElem.length > 0) {
+    quantityErrorElem[0].innerHTML = '';
+  }
+  
+  if (quantityElem && quantityElem.length > 0) {
+    quantity = getElementValue(quantityElem, 1);
+  }
+  
+  if (quantityInput > quantity) {
+    quantity = quantityInput;
+  }
+  
+  if (lengthInputElem && lengthInputElem.length > 0 && (document.getElementById('pdp-input-length') || document.getElementById('select-length')))  {
+    validateInputLength(lengthInputElem, quantity);
+  }
+  
+  if (totalPriceElem) {
+    let totalQuantity = Number(length) * Number(quantity);
+    highlightRangePrice(totalQuantity);
+    let webPriceElem = document.getElementById('webPriceId') || {};
+    priceObject?.priceList?.forEach(item => {
+      if (item.price && item.fromQuantity <= totalQuantity && item.toQuantity >= totalQuantity) {
+        price = item.price;
+        webPriceElem.innerHTML = item.priceDisplayText || '';
+        totalPriceElem.innerHTML = '$' + utils.formatNumberWithCommas(Number(totalQuantity * Number(price)).toFixed(2));
+        if (totalPriceStickyNavElem) {
+          totalPriceStickyNavElem.innerHTML = '$' + utils.formatNumberWithCommas(Number(totalQuantity * Number(price)).toFixed(2));
+        }
+      }
+    });
+  }
+};
+
+const formatPriceDisplayText = (partWebLowestPriceDisplayText) => {
+  let formattedDisplayTextForRecommendations = partWebLowestPriceDisplayText;
+  let partWebLowestPriceDisplayTextSplit = partWebLowestPriceDisplayText.split(' ');
+  if (partWebLowestPriceDisplayTextSplit[partWebLowestPriceDisplayTextSplit.length - 1]) {
+    const metric = partWebLowestPriceDisplayTextSplit[partWebLowestPriceDisplayTextSplit.length - 1]
+    // This is probably a bug on production but we have to mimic prod functionality for now
+    const redundantText = Number(metric) ? partWebLowestPriceDisplayTextSplit[partWebLowestPriceDisplayTextSplit.length - 2] : ""
+    return `${partWebLowestPriceDisplayTextSplit[0]}<span class="text-sm leading-14" style="font-weight: normal"> / ${redundantText} ${partWebLowestPriceDisplayTextSplit[partWebLowestPriceDisplayTextSplit.length - 1]}</span>`;
+  } else {
+    return formattedDisplayTextForRecommendations;
+  }
+};
+
+/** FlyerDeals Dialog lightbox helpers */
+const showFDDetailsDialog = () => {
+  const fdDetailsDialogBox = f('#flyerdeals-detailsdialog-root');
+  if (fdDetailsDialogBox) {
+    fdDetailsDialogBox.classList.remove('f-hidden');
+  }
+}
+
+const hideFDDetailsDialog = () => {
+  const fdDetailsDialogBox = f('#flyerdeals-detailsdialog-root');
+  if (fdDetailsDialogBox) {
+    fdDetailsDialogBox.classList.add('f-hidden');
+  }
+}
+
+const navigatePdp = (productId = '') => {
+  if(productId){
+    window.location.href = `/product/details/${productId}`
+  }
+}
+
+// product image lightbox
+const showProductImageLightbox = () => {
+  const productImageLightbox = f('#product-image-lightbox');
+  if (productImageLightbox) {
+    productImageLightbox.classList.remove('invisible-position');
+  }
+}
+
+const hideProductImageLightbox = () => {
+  const productImageLightbox = f('#product-image-lightbox');
+  if (productImageLightbox) {
+    productImageLightbox.classList.add('invisible-position');
+  }
+  unloadLightboxCadAndLoadPdpCad();
+}
+
+const unloadLightboxCadAndLoadPdpCad = () => {
+  if (cadLightboxActivated) {
+    cds.cadViewer.dispose();
+    cds.CADRequester.setContainerElementId('cds-cad-container');
+    cds.CADRequester.webglViewerElementId = 'cds-cad-viewer-container';
+    cds.CADRequester.webglIconsElementId = 'cds-icon-container';
+    cds.CADRequester.load();
+    cadLightboxActivated = false;
+  }
+}
+
+// secondary images
+const setThumbnailToSelected = (clickedElem) => {
+  let thumbContainers = f('.thumbnail-image-container');
+  let thumbImages = document.getElementsByClassName('thumbnail-image');
+  let featuredVideo = document.getElementById('load-video');
+  let borderClass = 'border-primary-variant-2';
+
+  //var productVideo = document.querySelectorAll('#product-video-frame');
+  //var product360 = document.querySelectorAll('#product-360-frame');
+
+  // is
+  const isDesiredThumbnailType = (thumbnailElem, desiredType) => {
+    if (!thumbnailElem) return false;
+    return thumbnailElem.getAttribute('data-thumbnail-type') == desiredType;
+  }
+
+  const isVideoThumbnail = (thumbnailElem) => {
+    let desiredType = 'video';
+    return isDesiredThumbnailType(thumbnailElem, desiredType);
+  }
+
+  const is360Thumbnail = (thumbnailElem) => {
+    let desiredType = '360';
+    return isDesiredThumbnailType(thumbnailElem, desiredType);
+  }
+
+  const isCadThumbnail = (thumbnailElem) => {
+    let desiredType = 'cad';
+    return isDesiredThumbnailType(thumbnailElem, desiredType);
+  }
+
+  // show
+  const showProductImageFrame = () => {
+    hideAllProductFrames();
+    let elem = f('#product-image-frame');
+    if (elem) elem.classList.remove('hidden');
+  }
+
+  const showProductVideoFrame = () => {
+    hideAllProductFrames();
+    let elem = f('#product-video-frame');
+    if (elem) elem.classList.remove('hidden');
+  }
+
+  const showProduct360Frame = () => {
+    hideAllProductFrames();
+    let elem = f('#product-360-frame');
+    if (elem) elem.classList.remove('invisible-position');
+  }
+
+  const showProductCadFrame = () => {
+    hideAllProductFrames();
+    let elem = f('#product-cad-frame');
+    if (elem) elem.classList.remove('hidden');
+  }
+
+  // hide
+  const hideProductImageFrame = () => {
+    let elem = f('#product-image-frame');
+    if (elem) elem.classList.add('hidden');
+  }
+
+  const hideProductVideoFrame = () => {
+    let elem = f('#product-video-frame');
+    if (elem) elem.classList.add('hidden');
+  }
+
+  const hideProduct360Frame = () => {
+    let elem = f('#product-360-frame');
+    if (elem) elem.classList.add('invisible-position');
+  }
+
+  const hideProductCadFrame = () => {
+    let elem = f('#product-cad-frame');
+    if (elem) elem.classList.add('hidden');
+  }
+
+  const hideAllProductFrames = () => {
+    hideProductImageFrame();
+    hideProductVideoFrame();
+    hideProduct360Frame();
+    hideProductCadFrame();
+  }
+
+  // border
+  const removeBorderFromThumbContainers = () => {
+    if (thumbContainers) thumbContainers.forEach((elem) => {
+      elem.classList.remove(borderClass);
+    });
+    let imageThumbs = f('[data-product-image-index]');
+    if (imageThumbs) imageThumbs.forEach((elem) => {
+      elem.classList.remove(borderClass);
+    });
+  }
+
+  const addBorderToSelectedThumb = (elem) => {
+    removeBorderFromThumbContainers();
+    if (elem) {
+      if (Array.isArray(elem)) elem.forEach((thumb) => {
+        thumb.classList.add(borderClass)
+      });
+      else elem.classList.add(borderClass);
+    }
+  }
+
+  // video
+  const setVideoIframeSrc = (currentThumbImage) => {
+    featuredVideo.src = `https://www.youtube.com/embed/${currentThumbImage.alt}?rel=0`
+
+  }
+
+  const getSelectedImageThumbDataImageIndexElem = (elem) => {
+    let dataAttributeName = 'data-product-image-index';
+    let dataImageIndex = elem.getAttribute(dataAttributeName)
+    if (dataImageIndex) {
+      let dataImageIndexElem = f(`[${dataAttributeName}="${dataImageIndex}"]`);
+      if (dataImageIndexElem) return dataImageIndexElem;
+    }
+    return false;
+  }
+
+  let currentThumbContainer = clickedElem;
+  let currentThumbImage = clickedElem.querySelector('.thumbnail-image')
+  if (currentThumbImage) {
+    if (isVideoThumbnail(currentThumbContainer)) {
+      showProductVideoFrame();
+      addBorderToSelectedThumb(currentThumbContainer);
+      setVideoIframeSrc(currentThumbImage);
+    } else if (is360Thumbnail(currentThumbContainer)) {
+      showProduct360Frame();
+      addBorderToSelectedThumb(currentThumbContainer);
+    } else if (isCadThumbnail(currentThumbContainer)) {
+      showProductCadFrame();
+      addBorderToSelectedThumb(currentThumbContainer);
+    } else {
+      let selectedThumbDataImageIndexElem = getSelectedImageThumbDataImageIndexElem(currentThumbContainer)
+      addBorderToSelectedThumb(selectedThumbDataImageIndexElem);
+      showProductImageFrame();
+      setLightboxProductImage(currentThumbImage);
+      selectProductImageLightboxTab('image');
+    }
+  }
+}
+
+const initZoomImage = () => {
+  let img = document.querySelector('#image'); // Selected Images
+  if (img === null) return; // Exit from this function, when there is no image for the product to zoom
+
+  let zoomwindow = document.querySelector('#zoomwindow'); // Lens
+  let zoomimage = document.querySelector('#zoomimage'); // Result Display
+  let featuredImg = document.getElementById('image');
+  const container = document.querySelector('#container');
+
+  img.addEventListener('mousemove', moveView);
+  zoomwindow.addEventListener('mousemove', moveView);
+  container.addEventListener('mouseleave', handleMouseOut);
+
+  let oW = zoomimage.offsetWidth / zoomwindow.offsetWidth;
+  let oH = zoomimage.offsetHeight / zoomwindow.offsetHeight;
+
+  zoomimage.style.backgroundImage = `url(${featuredImg.src})`;
+  zoomimage.style.visibility = 'hidden';
+  zoomwindow.style.visibility = 'hidden';
+  zoomimage.style.backgroundSize = img.width * oW + 'px ' + img.height * oH + 'px';
+
+  function handleMouseOut() {
+    zoomimage.style.visibility = 'hidden';
+    zoomwindow.style.visibility = 'hidden';
+  }
+
+  function moveView(e) {
+    e.preventDefault();
+    e = e || window.event;
+    zoomwindow.style.visibility = 'visible';
+    zoomimage.style.visibility = 'visible';
+    let bounds = img.getBoundingClientRect();
+    let x = e.pageX - bounds.left - window.scrollX - zoomwindow.offsetWidth / 2;
+    if (x > img.width - zoomwindow.offsetWidth) {
+      x = img.width - zoomwindow.offsetWidth;
+    }
+    if (x < 0) {
+      x = 0;
+    }
+    zoomwindow.style.left = x + 'px';
+    let y = e.pageY - bounds.top - window.scrollY - zoomwindow.offsetHeight / 2;
+    if (y > img.height - zoomwindow.offsetHeight) {
+      y = img.height - zoomwindow.offsetHeight;
+    }
+    if (y < 0) {
+      y = 0;
+    }
+    zoomimage.style.backgroundSize =
+      img.width * oW + "px " + img.height * oH + "px";
+    zoomwindow.style.top = y + 'px';
+    zoomimage.style.backgroundPosition = '-' + x * oW + 'px -' + y * oH + 'px';
+  }
+}
+
+// used by both on page and lightbox thumbnails
+// also sets zoom image box background
+const setLightboxProductImage = (selectedThumbnailImg) => {
+  if (!selectedThumbnailImg) return;
+
+  // if api returns gif
+  const switchImageToJpg = (imageSrc) => {
+    if (!imageSrc || typeof imageSrc !== 'string') return '';
+    return imageSrc.replace('.gif', '.jpg')
+  }
+  // featured product
+  const setFeaturedProductImageSrc = (imageSrc) => {
+    let featuredProductImage = f('#image');
+    if (featuredProductImage) featuredProductImage.setAttribute('src', switchImageToJpg(imageSrc));
+  }
+  const setFeaturedProductImageLightboxSrc = (imageSrc) => {
+    let lightboxProductImage = f('#product-images-lightbox-full-image');
+    if (lightboxProductImage) lightboxProductImage.setAttribute('src', switchImageToJpg(selectedThumbnailImgSrc));
+  }
+  // zoom image
+  const setZoomImageBackgroundImage = (productImageSrc) => {
+    let zoomimage = f('#zoomimage');
+    if (productImageSrc) zoomimage.style.backgroundImage = `url("${switchImageToJpg(productImageSrc)}")`;
+  }
+
+  // set
+  const selectedThumbnailImgSrc = selectedThumbnailImg.getAttribute('src');
+  setFeaturedProductImageSrc(selectedThumbnailImgSrc);
+  setZoomImageBackgroundImage(selectedThumbnailImgSrc);
+  setFeaturedProductImageLightboxSrc(selectedThumbnailImgSrc);
+}
+
+const selectProductImageLightboxTab = (tabType) => {
+  if (!tabType || typeof tabType !== 'string') return;
+
+  // show hide
+  const showProductImageLightboxTab = () => {
+    let productImageLightboxTabElem = f(`#product-details-lightbox-tab-${tabType}`);
+    if (productImageLightboxTabElem) productImageLightboxTabElem.classList.remove('invisible-position');
+  }
+  const hideAllProductImageLightboxTabs = () => {
+    let productImageLightboxTabs = f('.product-details-lightbox-tab');
+    if (productImageLightboxTabs) productImageLightboxTabs.forEach((elem) => {
+      elem.classList.add('invisible-position');
+    });
+  }
+  const showProductDetailsImageLightboxImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-image-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.remove('hidden');
+    });
+  }
+  const showProductDetailsImageLightbox360ImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-360-image-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.remove('hidden');
+    });
+  }
+  const showVideoLightboxImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-video-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.remove('hidden');
+    });
+  }
+
+  const hideProductDetailsImageLightboxImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-image-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.add('hidden');
+    });
+  }
+  const hideProductDetailsImageLightbox360ImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-360-image-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.add('hidden');
+    });
+  }
+  const hideVideoLightboxImageThumbnails = () => {
+    let productImageLightboxItemInfo = f('.product-details-image-lightbox-video-thumbnails');
+    if (productImageLightboxItemInfo) productImageLightboxItemInfo.forEach((elem) => {
+      elem.classList.add('hidden');
+    });
+  }
+
+  const removeActiveFromAllProductImageLightboxTabButtons = () => {
+    let productImageLightboxTabButtons = f('.product-details-lightbox-tab-button');
+    if (productImageLightboxTabButtons) productImageLightboxTabButtons.forEach((elem) => {
+      elem.classList.remove('active');
+    });
+  }
+  const setProductImageLightboxTabButtonToActive = () => {
+    let productLightboxTabButtonElem = f(`#product-details-lightbox-tab-button-${tabType}`);
+    if (productLightboxTabButtonElem) {
+      removeActiveFromAllProductImageLightboxTabButtons();
+      productLightboxTabButtonElem.classList.add('active')
+    }
+  }
+  // video
+  const setVideoIframeSrc = () => {
+    let lightboxVideoIframeElem = f('#load-video-lightbox');
+    if (lightboxVideoIframeElem) {
+      if (lightboxVideoIframeElem.getAttribute('src') === '') {
+        let videoDataSrc = lightboxVideoIframeElem.getAttribute('data-video-src') || '';
+        lightboxVideoIframeElem.setAttribute('src', videoDataSrc);
+      }
+    }
+  }
+  if (tabType === 'image') {
+    setProductImageLightboxTabButtonToActive();
+    hideAllProductImageLightboxTabs();
+    showProductDetailsImageLightboxImageThumbnails();
+    showProductImageLightboxTab();
+    hideProductDetailsImageLightbox360ImageThumbnails()
+    hideVideoLightboxImageThumbnails()
+  }
+  if (tabType === 'video') {
+    //setVideoIframeSrc();
+    setProductImageLightboxTabButtonToActive();
+    hideAllProductImageLightboxTabs();
+    hideProductDetailsImageLightboxImageThumbnails();
+    showProductImageLightboxTab();
+    hideProductDetailsImageLightbox360ImageThumbnails()
+    showVideoLightboxImageThumbnails()
+    //setVideoThumbnailToSelected()
+  }
+  if (tabType === '360') {
+    setProductImageLightboxTabButtonToActive();
+    hideAllProductImageLightboxTabs();
+    hideProductDetailsImageLightboxImageThumbnails();
+    showProductDetailsImageLightbox360ImageThumbnails()
+    showProductImageLightboxTab();
+    hideVideoLightboxImageThumbnails()
+  }
+  if (tabType === 'cad') {
+    setProductImageLightboxTabButtonToActive();
+    hideAllProductImageLightboxTabs();
+    hideProductDetailsImageLightboxImageThumbnails();
+    showProductImageLightboxTab();
+    hideProductDetailsImageLightbox360ImageThumbnails()
+    hideVideoLightboxImageThumbnails()
+    if (typeof loadCadLightbox === 'function') loadCadLightbox();
+    else console.log(`loadCadLightbox() error loading`)
+  }
+}
+
+const setVideoThumbnailToSelected = (thumbnailIndex) => {
+  const borderClass = 'border-primary-variant-2'
+  const removeBorderFromAllNonVideoThumbnails = () => {
+    let nonImageThumnailElems = f('[data-thumbnail-type]');
+    if (nonImageThumnailElems) nonImageThumnailElems.forEach((elem) => {
+      let dataThumbnailType = elem.getAttribute('data-thumbnail-type') || false;
+      if (dataThumbnailType && dataThumbnailType !== 'video') elem.classList.remove(borderClass);
+    })
+  }
+  const removeBorderFromAllVideoThumbnails = () => {
+    let imageThumbnailElems = f(`[data-video-index]`);
+    //removeBorderFromAllNonVideoThumbnails();
+    if (imageThumbnailElems) imageThumbnailElems.forEach((elem) => {
+      elem.classList.remove(borderClass);
+    });
+  }
+  const addBorderToSelectedThumbnailImage = (thumbnail) => {
+    if (thumbnail) thumbnail.forEach((elem) => {
+      elem.classList.add(borderClass);
+    });
+  }
+
+  const selectedThumbnail = f(`[data-video-index="${thumbnailIndex}"]`);
+
+  setLightboxVideo(thumbnailIndex);
+  removeBorderFromAllVideoThumbnails();
+  addBorderToSelectedThumbnailImage(selectedThumbnail);
+}
+
+const setLightboxVideo = (thumbnailIndex) => {
+  let videoIframe = document.getElementById('load-video-lightbox');
+  let selectedThumbnail = f(`[data-video-index="${thumbnailIndex}"]`)[0];
+  
+  if (videoIframe && selectedThumbnail) {
+    let videoDataSrc = selectedThumbnail.getAttribute('data-video-src') || '';
+    videoIframe.setAttribute('src', videoDataSrc);
+  }
+}
+
+// only use on lightbox thumbs
+const setProductImageThumbnailToSelected = (thumbnailIndex) => {
+  const borderClass = 'border-primary-variant-2'
+  const removeBorderFromAllNonProductImageThumbnails = () => {
+    let nonImageThumnailElems = f('[data-thumbnail-type]');
+    if (nonImageThumnailElems) nonImageThumnailElems.forEach((elem) => {
+      let dataThumbnailType = elem.getAttribute('data-thumbnail-type') || false;
+      if (dataThumbnailType && dataThumbnailType !== 'image') elem.classList.remove(borderClass);
+    })
+  }
+  const removeBorderFromAllProductImageThumbnails = () => {
+    let imageThumbnailElems = f(`[data-product-image-index]`);
+    removeBorderFromAllNonProductImageThumbnails();
+    if (imageThumbnailElems) imageThumbnailElems.forEach((elem) => {
+      elem.classList.remove(borderClass);
+    });
+  }
+  const addBorderToSelectedThumbnailImage = (thumbnail) => {
+    if (thumbnail) thumbnail.forEach((elem) => {
+      elem.classList.add(borderClass);
+    });
+  }
+
+  const selectedThumbnail = f(`[data-product-image-index="${thumbnailIndex}"]`);
+  const selectedThumbnailImg = f(`[data-product-image-index="${thumbnailIndex}"] img`)[0];
+
+  setLightboxProductImage(selectedThumbnailImg);
+  removeBorderFromAllProductImageThumbnails();
+  addBorderToSelectedThumbnailImage(selectedThumbnail);
+}
+
+const set360ImageThumbnailToSelected = (thumbnailIndex) => {
+  const borderClass = 'border-primary-variant-2'
+  const removeBorderFromAllNon360ImageThumbnails = () => {
+    let nonImageThumnailElems = f('[data-thumbnail-type]');
+    if (nonImageThumnailElems) nonImageThumnailElems.forEach((elem) => {
+      let dataThumbnailType = elem.getAttribute('data-thumbnail-type') || false;
+      if (dataThumbnailType && dataThumbnailType !== '360') elem.classList.remove(borderClass);
+    })
+  }
+  const removeBorderFromAll360ImageThumbnails = () => {
+    let imageThumbnailElems = f(`[data-360-image-index]`);
+    //removeBorderFromAllNon360ImageThumbnails();
+    if (imageThumbnailElems) imageThumbnailElems.forEach((elem) => {
+      elem.classList.remove(borderClass);
+    });
+  }
+  const addBorderToSelectedThumbnailImage = (thumbnail) => {
+    if (thumbnail) thumbnail.forEach((elem) => {
+      elem.classList.add(borderClass);
+    });
+  }
+
+  const selectedThumbnail = f(`[data-360-image-index="${thumbnailIndex}"]`);
+
+  setLightbox360Image(thumbnailIndex);
+  removeBorderFromAll360ImageThumbnails();
+  addBorderToSelectedThumbnailImage(selectedThumbnail);
+}
+
+const setLightbox360Image = (thumbnailIndex) => {
+  let image360s = document.querySelectorAll('[id^="pdp-image-360-lightbox-"]')
+  image360s.forEach((image360, index)=> {
+    image360.classList.add('hidden')
+    if (image360.id == `pdp-image-360-lightbox-${thumbnailIndex}`){
+      image360.classList.remove('hidden')
+    }
+  })
+}
+
+const determineFrequentlyViewedTogetherUi = () => {
+  let breakpoint = 1680;
+  let windowWidth = utils.getWindowWidth();
+  let horizontalElem = f('#recommendations-container-frequently-viewed-together-horizontal');
+  let verticalElem = f('[data-id="product-recommendations-frequently-viewed-together-vertical"]');
+
+  if (Array.isArray(verticalElem)) verticalElem = verticalElem[0];
+
+  if (windowWidth > breakpoint) {
+    if (horizontalElem) horizontalElem.classList.add('f-hidden');
+    sendBodyEvent('frequentlyViewedTogetherVertical');
+  } else {
+    if (verticalElem) verticalElem.classList.add('f-hidden');
+    if (horizontalElem) horizontalElem.classList.remove('f-hidden');
+    sendBodyEvent('frequentlyViewedTogetherHorizontal');
+  }
+}
+
+const showOrHideCompliances = () => {
+  const containers = document.querySelectorAll('#compliances-container')
+  const showHideButtons = document.querySelectorAll('#compliance-show-hide')
+
+  const wasHidden = containers[0]?.classList?.contains('hidden')
+
+  showHideButtons.forEach(showHideButton => {
+    showHideButton.innerHTML = wasHidden ? `
+      <p class="font-bold">Compliance and Restrictions</p>
+      <a class="font-bold hover:underline text-primary">Hide details <i class="fa fa-chevron-up"></i></a>
+    ` : `
+      <p class="font-bold">Compliance and Restrictions</p>
+      <a class="font-bold hover:underline text-primary">View details <i class="fa fa-chevron-down"></i></a>
+    `
+  })
+  containers.forEach(container => container?.classList?.toggle('hidden'))
+}
+const downloadPDF = (fileName, downloadPdfUrl, configUrl) => {
+  const fetchURL = `${configUrl}/global/images/ProductDataSheet/${downloadPdfUrl}.pdf`;
+  fetch(fetchURL)
+    .then((response) => response.blob())
+    .then((blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(() => alert("Failed to download file.")); // TODO: Instead of alert, please add proper alert component
+}
+const fetchPdf = async (url) => {
+  const response = await fetch(url);
+  return response.arrayBuffer();
+}
+
+const loadPdfAndRenderFirstPage = async (pdfUrl2, count) => {
+  const pdfData = await fetchPdf(pdfUrl2);
+
+  // Load the PDF using pdf-lib
+  const pdfDoc = await PDFLib.PDFDocument.load(pdfData);
+  const pdfBytes = await pdfDoc.save();
+
+  // Load the PDF using pdf.js
+  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+  const pdf = await loadingTask.promise;
+
+  // Get the first page
+  const page = await pdf.getPage(1);
+  // Prepare canvas using PDF page dimensions
+  const viewport = page.getViewport({ scale: 1.5 });
+  const canvas = document.getElementById(count + '-pdf-canvas');
+  const context = canvas.getContext('2d');
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+
+  // Render the page into the canvas context
+  const renderContext = {
+    canvasContext: context,
+    viewport: viewport,
+  };
+  await page.render(renderContext).promise;
+}
+const renderThumnailImageToHtml = (count) => {
+  document.getElementById(`${count}-download`).addEventListener('click', () => {
+    const canvas = document.getElementById(`${count}-pdf-canvas`);
+    const image = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = 'extracted_image.png';
+    link.click();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  getStickyNavRevealPoints();
+  initZoomImage();
+  bindProductPurchaseReviewLinkClick();
+  adjustPageDirectAnchor();
+  determineFrequentlyViewedTogetherUi();
+  hardRestrictionLink();
+  tabsActiveToggler();
+  handleAltsCompareExpansion();
+  loadMobileAltsContainers();
+  setTimeout(initializeQuantityInput, 100);
+
+
+
+const cadContainer = document.querySelector('[data-init-cad-lightbox]');
+    if (!cadContainer) return;
+
+    const viewerContainerId = 'cds-cad-viewer-container-lightbox';
+    const iconContainerId = 'cds-icon-container-lightbox';
+
+    const maxRetries = 4;
+    const retryDelay = 400;
+    let retryCount = 0;
+
+    const loadCadViewer = () => {
+        if (typeof cds === 'object') {
+            cds.cadViewer.dispose();
+            cds.CADRequester.setContainerElementId(cadContainer.id);
+            cds.CADRequester.webglViewerElementId = viewerContainerId;
+            cds.CADRequester.webglIconsElementId = iconContainerId;
+            cds.CADRequester.load();
+        } else if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(loadCadViewer, retryDelay);
+        }
+    };
+
+    loadCadViewer();
+
+    // Bind icon actions
+    cadContainer.querySelectorAll('[data-action]').forEach(img => {
+        img.addEventListener('click', () => {
+            const action = img.getAttribute('data-action');
+            switch (action) {
+                case 'MODE_SHADED':
+                    cds.cadViewer.setRenderMode(cds.cadViewer.MODE_SHADED);
+                    break;
+                case 'MODE_TRANSPARENT':
+                    cds.cadViewer.setRenderMode(cds.cadViewer.MODE_TRANSPARENT);
+                    break;
+                case 'VIEW_ISOMETRIC':
+                    cds.cadViewer.setOrientation(cds.cadViewer.VIEW_ISOMETRIC);
+                    break;
+                case 'VIEW_TOP':
+                    cds.cadViewer.setOrientation(cds.cadViewer.VIEW_TOP);
+                    break;
+                case 'VIEW_LEFT':
+                    cds.cadViewer.setOrientation(cds.cadViewer.VIEW_LEFT);
+                    break;
+                case 'VIEW_BOTTOM':
+                    cds.cadViewer.setOrientation(cds.cadViewer.VIEW_BOTTOM);
+                    break;
+                case 'VIEW_RIGHT':
+                    cds.cadViewer.setOrientation(cds.cadViewer.VIEW_RIGHT);
+                    break;
+                case 'FULLSCREEN':
+                    cds.cadViewer.setFullScreen();
+                    break;
+                case 'TOGGLE_GRID':
+                    cds.cadViewer.toggleBaseGrid();
+                    break;
+                case 'TOGGLE_SHADOW':
+                    cds.cadViewer.toggleShadowinViewer();
+                    break;
+            }
+        });
+    });
+
+
+const cadFrame = document.getElementById("product-cad-frame");
+    if (!cadFrame) return;
+
+    const domain = cadFrame.dataset.domain;
+    const product = cadFrame.dataset.product;
+    const maxRetriess = parseInt(cadFrame.dataset.maxRetriess || "4");
+    const retryTimer = parseInt(cadFrame.dataset.retryTimer || "400");
+    let retryCounter = 0;
+
+    function loadCad() {
+        if (typeof cds === 'object') {
+            cds.CADRequester.setDomain(domain);
+            cds.CADRequester.setProduct(product);
+            cds.CADRequester.setContainerElementId("cds-cad-container");
+            cds.CADRequester.setFormatSelectElementId("cds-cad-download-formats");
+            cds.CADRequester.setDownloadButtonElementId("cds-cad-download-button");
+            cds.CADRequester.setView2DButtonElementId("cds-cad-view-2D-button");
+            cds.CADRequester.webglViewerElementId = "cds-cad-viewer-container";
+            cds.CADRequester.webglIconsElementId = "cds-icon-container";
+            cds.CADRequester.load();
+
+            document.getElementById("cds-icon-container").classList.remove("hidden");
+
+            attachIconHandlers();
+        } else {
+            if (retryCounter < maxRetriess) {
+                retryCounter++;
+                setTimeout(loadCad, retryTimer);
+            }
+        }
+    }
+
+    function attachIconHandlers() {
+        const icons = document.querySelectorAll("#cds-icon-container img");
+        icons.forEach(icon => {
+            icon.addEventListener("click", () => {
+                const mode = icon.dataset.mode;
+                const orientation = icon.dataset.orientation;
+                const action = icon.dataset.action;
+
+                if (mode) cds.cadViewer.setRenderMode(cds.cadViewer[mode]);
+                if (orientation) cds.cadViewer.setOrientation(cds.cadViewer[orientation]);
+                if (action === "fullscreen") cds.cadViewer.setFullScreen();
+                if (action === "grid") cds.cadViewer.toggleBaseGrid();
+                if (action === "shadow") cds.cadViewer.toggleShadowinViewer();
+            });
+        });
+    }
+
+    loadCad();
+});
+
+function handleButtonClick(event) {
+  const button = document.getElementById('pdp-tv-button');
+  const buttonText = document.getElementById('button-text');
+  const spinner = document.getElementById('spinner');
+
+  button.disabled = true;
+  buttonText.style.display = 'none';
+  spinner.style.display = 'inline-block';
+}
+
+function handleAfterSwap(event) {
+  const button = document.getElementById('pdp-tv-button');
+  const buttonText = document.getElementById('button-text');
+  const spinner = document.getElementById('spinner');
+
+  button.disabled = false;
+  buttonText.style.display = 'inline-block';
+  spinner.style.display = 'none';
+}
+
+function showPdpTVLightboxAndRegisterHtmxEvents() {
+  //lightboxShow('#product-details-tableview-lightbox-stage');
+  showPdpTVLightbox()
+  sendLinkEvent({
+    event_name: 'table view on pdp click',
+    product_id: utag_data.product_id,
+    ui_link_name: 'open modal'
+
+  })
+  htmx.process(htmx.find('#product-details-tableview-lightbox'));
+  addEventHandlerToRemoveHxTrigger()
+  handlerPDPTVTabClick()
+}
+
+// GROW-917 toggle specifications
+function toggleSpecifications_B(basePartNumber) {
+  const hiddenSpecs = document.getElementById('spec-preview-hidden');
+  const specFeedback = document.getElementById('spec-feedback')
+  const isHidden = hiddenSpecs?.classList.contains('hidden');
+
+  const specificationsToggleText = document.getElementById('specifications-toggle-text');
+  const specificationsToggleChevron = document.getElementById('specifications-toggle-chevron');
+
+  if (isHidden) {
+    specificationsToggleText.innerHTML = 'Show less product specifications';
+    specificationsToggleChevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+  } else {
+    specificationsToggleText.innerHTML = 'See all product specifications';
+    specificationsToggleChevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+  }
+  sendLinkEvent({
+    event_name: 'pdp click',
+    product_id: [`${basePartNumber}`],
+    ui_link_name: 'product specifications'
+  })
+
+  hiddenSpecs.classList.toggle('hidden');
+  specFeedback.classList.toggle('hidden')
+}
+
+function launchProductDetailPage(basePartNumber) {
+  sendLinkEvent({
+    event_name: 'table view on pdp click',
+    product_id: [`${basePartNumber}`],
+    ui_link_name: 'click to other pdp'
+  })
+}
+
+var htmxCallTriggered = false;
+function addEventHandlerToRemoveHxTrigger() {
+  var element = document.getElementById('product-details-tableview-lightbox');
+  if (element) {
+    element.addEventListener('htmx:afterSwap', function (event) {
+      event.target.removeAttribute('hx-trigger');
+      event.target.removeAttribute('hx-get');
+      event.target.removeAttribute('hx-target');
+      event.target.removeAttribute('hx-swap');
+      htmx.process(htmx.find('#product-details-tableview-lightbox'));
+      htmxCallTriggered = true;
+
+    });
+    element.addEventListener('htmx:responseError', function (event) {
+      var loaderElement = document.getElementById('pdp-tv-loader');
+      if (loaderElement) {
+        loaderElement.remove();
+      }
+      var errorMessage = document.getElementById('pdp-tv-error-message')
+      if (errorMessage) {
+        errorMessage.innerText = "Sorry, we are unable to get items.";
+      }
+    });
+  }
+
+}
+
+
+const tvPs = (tvPsArray) => {
+  if (!Array.isArray(tvPsArray)) return false
+  for (part in tvPsArray) {
+    let currentPart = tvPsArray[part]
+    up(currentPart)
+    tp(currentPart)
+    vi(currentPart)
+    ca(currentPart)
+  }
+  resizeFeaturedItemTableCells()
+}
+
+const up = (currentPart) => {
+  const elem = document.getElementById(`${currentPart.n}` + '-up')
+  if (elem) elem.outerHTML = currentPart.pdt
+}
+
+const tp = currentPart => {
+  const elem = document.getElementById(`${currentPart.n}` + '-tp')
+  let tpHtml = '-'
+  if (elem) {
+    tpHtml = currentPart.moq > 1 ? `${currentPart.tpt}/pack of ${currentPart.moq}` : currentPart.pdt
+    elem.outerHTML = tpHtml
+  }
+
+}
+
+const vi = (currentPart) => {
+  const elem = document.getElementById(`${currentPart.n}` + '-vi')
+  let viHtml = '-'
+  if (elem) {
+    viHtml = currentPart.vi
+    elem.outerHTML = viHtml
+  }
+
+}
+
+const ca = (currentPart) => {
+  const elem = document.getElementById(`${currentPart.n}` + '-ca')
+  let caHtml = '-'
+  if (elem) {
+    caHtml = currentPart.ca
+    elem.outerHTML = caHtml
+  }
+}
+
+const tvPsClose = (domId) => {
+  const elem = document.getElementById(domId)
+  if (elem) {
+    elem.remove()
+    //console.log(`elem status: ${elem}`)
+  }
+}
+
+
+const registerHtmxEvents = () => {
+  htmx.process(htmx.find('#product-details-tableview-lightbox'));
+}
+
+const handlerPDPTVTabClick = () => {
+  let elem = Array.from(document.querySelectorAll('.tab'))
+  if (Array.isArray(elem)) {
+    elem.map(tab => {
+      tab.addEventListener('click', event => {
+        elem.forEach((tabElement) => {
+          tabElement.classList.remove('active')
+        })
+        tab.classList.add('active')
+
+        let tabDataId = tab.getAttribute('tab-data') ?? false
+        let tabContainers = Array.from(document.querySelectorAll('.tab-data'))
+        if (tabDataId) {
+          let tabData = document.getElementById(tabDataId)
+          if (Array.isArray(tabContainers)) {
+            tabContainers.forEach((tabContainer) => {
+              tabContainer.classList.remove('active')
+
+            })
+          }
+          tabData.classList.add('active')
+          setCurrentPdpTableviewTab(tabDataId)
+        }
+
+        sendToggleClickEvent(tab.innerText)
+      })
+    })
+  }
+}
+
+function sendToggleClickEvent(sizeType) {
+  let lowerCaseSizeType = sizeType.toLowerCase();
+  sendLinkEvent({
+    event_name: 'table view on pdp click',
+    product_id: utag_data.product_id,
+    ui_link_name: `size toggle:${lowerCaseSizeType}`
+  })
+}
+
+function removeNonCurrencyCharacters(input) {
+  return input.replace(/[^0-9$.]/g, '');
+}
+
+/**
+ * @description used to validate the user entered zipcode
+ * @param {*} event 
+ * @returns {undefined}
+ */
+function validateZipCode(event) {
+  const zipCodeElm = event.target.parentElement.querySelector("input");
+  if (!zipCodeElm?.value || zipCodeElm?.value?.length < 5) {
+    zipCodeElm.setCustomValidity("Enter Valid zip code");
+    event?.preventDefault();
+    return;
+  } else {
+    zipCodeElm.setCustomValidity("");
+    event?.target?.setAttribute('data-state', 'loading')
+  }
+}
+
+/**
+ * @description function used to hide shipping estimate message and to show zipcode
+ */
+function toggleZipInputVisibility() {
+  sendLinkEvent({
+    event_name: 'pdp delivery date click',
+    ui_link_name: 'edit'
+  })
+  document
+    .getElementById("edd-shipto-container")
+    .classList.add("hidden");
+  document
+    .getElementById("edd-enter-zipcode-container")
+    .classList.remove("hidden");
+  document
+    .querySelector("#edd-enter-zipcode-container p")
+    ?.classList.add("hidden");
+}
+
+/**
+ * @description function use to stop zipcode length less than given max length
+ * @param {*} event 
+ */
+function validateOnInput(event) {
+  if (event.target?.value.length > event.target.maxLength)
+    event.target.value = event.target?.value.slice(0, event.target.maxLength);
+  event.target?.setCustomValidity('')
+}
+
+function validateQtyAndLenthForEstimate(event) {
+  const zipcodeElm = f("#add-zip-code");
+  const defaultZipCode = f("#estimate_default_zip_code");
+  const isCTL = event?.target?.dataset?.ctl;
+  if (isCTL === "true" || !zipcodeElm.checkValidity()) {
+    event.preventDefault();
+    return;
+  }
+  if (
+    (zipcodeElm?.value === "" || zipcodeElm?.value === 0) &&
+    defaultZipCode?.value === ""
+  ) {
+    event.preventDefault();
+    return;
+  }
+  if (!f('#edd-enter-zipcode-container')?.classList?.contains('hidden')) {
+    f('#btn-edd-apply')?.setAttribute("data-state", "loading");
+  }
+}
+function getEstimatePayload() {
+  const zipCode = f("#add-zip-code")?.value;
+  const defaultZipCode = zipCode === '' || zipCode === 0 ? f("#estimate_default_zip_code")?.value : zipCode;
+  return {
+    referenceNumber: f("#referenceNumber")?.value,
+    "quantity-new": f("#pdp-input-quantity")?.value || f("#quantity")?.value || f("#pdp-quantity")?.value,
+    "pdp-input-length": f("#pdp-input-length")?.value,
+    zipCode: defaultZipCode
+  };
+}
+
+function extractNumber(text) {
+  const match = text.match(/\d+\.\d+/);
+  if (match) {
+    return match[0];
+  }
+  return null;
+}
+
+function getCurrentItemDataFromPDP() {
+  let itemCell = document.getElementById("pdp-tv-item-number") ?? '';
+  let elemWithItemNumber = document.getElementById("basePartNumber") ?? '';
+  let itemNumber = elemWithItemNumber.getAttribute("data-partnumber") ?? '';
+  itemCell.innerHTML = `<a href="/product/details/${itemNumber}" onclick="capturePdpClickAdobeEvent('${itemNumber}')">${itemNumber}</a>` ?? ''
+
+  let availabilityCell = document.getElementById("pdp-tv-inventory") ?? '';
+  let elemWithStockInfo = document.getElementById("availabilityHtml") ?? '';
+  availabilityCell.innerHTML = elemWithStockInfo.innerHTML ?? '';
+  removeThirdPTagFromInventoryCell()
+
+  let unitPriceCell = document.getElementById("pdp-tv-unit-price") ?? '';
+  let elemWithUnitPrice = document.getElementById("webPriceId") ?? '';
+  let unitPriceDisplayText = elemWithUnitPrice.innerHTML ?? '';
+  unitPriceCell.innerHTML = unitPriceDisplayText ?? '';
+
+  let priceCell = document.getElementById("pdp-tv-price") ?? '';
+  let elemWithPrice = document.getElementById("totalPriceId") ?? '';
+  let price = elemWithPrice.getAttribute('data-initial-value')
+  let minimumOrderQuantityElem = (document.getElementById("pdp-quantity") || document.getElementById("quantity")) ?? '';
+  let minimumOrderQuantity = minimumOrderQuantityElem.getAttribute("data-minorderquantity") ?? '';
+  priceCell.innerHTML = `${minimumOrderQuantity > 1 ? `${price}/pack of ${minimumOrderQuantity}` : `${price} ea.`}` ?? ''
+
+  setAddToCartButtonHTMLForCurrentItem()
+
+  let uniqueCells = document.querySelectorAll('td[id^="pdp-tv-col"]') ?? '';
+  if (uniqueCells) {
+    uniqueCells.forEach(tdElement => {
+      let dataName = tdElement.getAttribute('data-name');
+      let correspondingElement = document.getElementById(dataName) ?? '';
+      if (correspondingElement) {
+        tdElement.innerHTML = correspondingElement.getAttribute('data-value') ?? '';
+      }
+    });
+  }
+}
+
+function getAddToCartCallForTVWidgetCurrentItem() {
+  let addToCartBtnElement = document.getElementById("btn-pdp-add-to-cart") ?? '';
+  let hxGetURL = addToCartBtnElement.getAttribute("hx-get") ?? '';
+
+  let queryString = hxGetURL.split('?')[1] ?? '';
+  let params = new URLSearchParams(queryString)
+
+  let minimumOrderQuantityElem = (document.getElementById("pdp-quantity") || document.getElementById("quantity")) ?? '';
+  let minimumOrderQuantity = minimumOrderQuantityElem.getAttribute("data-minorderquantity") ?? '';
+
+  params.delete('addToCartSource')
+  params.delete('inLightbox')
+  params.delete('grow486')
+
+  params.append('quantity', minimumOrderQuantity)
+  params.append('addToCartSource', 'table%20view%20on%20pdp')
+  params.append('inLightbox', 'true')
+
+
+  let updateQueryString = params.toString()
+  return hxGetURL.split('?')[0] + '?' + updateQueryString
+}
+
+function setAddToCartButtonHTMLForCurrentItem() {
+  let addToCartCall = getAddToCartCallForTVWidgetCurrentItem()
+
+  let cartActionCellHTML = `<div id="current-item-add-to-cart-button"> 
+                                    <button 
+                                        hx-get="${addToCartCall}"
+                                        hx-swap="innerHTML"
+                                        hx-target=this
+                                    >
+                                        <div class="pdp-tv-add-to-cart-btn btn btn-primary text-base rounded-2xl">Add <div id="toCartText"> to Cart </div></div>
+                                    </button>
+                            </div>`
+
+  let cartActionCell = document.getElementById("pdp-tv-cart-action")
+  cartActionCell.innerHTML = cartActionCellHTML
+}
+
+function removeThirdPTagFromInventoryCell() {
+  const containerElement = document.getElementById("pdp-tv-inventory");
+  if (containerElement) {
+    const pTags = containerElement.querySelectorAll('p');
+    if (pTags.length >= 3) {
+      for (let i = 0; i < pTags.length; i++) {
+        formatShippingText(pTags[i])
+        if (i >= 2) {
+          pTags[i].remove();
+        }
+
+      }
+    }
+  }
+}
+
+function showPdpTVLightbox() {
+  f("#product-details-tableview-lightbox-stage").classList.remove("f-hidden")
+  f("#product-details-tableview-lightbox-stage").classList.add('flex')
+}
+
+function closePdpTVLightbox() {
+  f("#product-details-tableview-lightbox-stage").classList.add('f-hidden')
+  f("#product-details-tableview-lightbox-stage").classList.remove('flex')
+
+}
+
+function formatShippingText(pTag) {
+  const text = pTag.textContent.trim()
+  if (text.includes("Expected to ship within")) {
+    const match = text.match(/(\d+)\s*Business/)
+    if (match) {
+      const days = match[1];
+      pTag.textContent = `Exp. to ship (${days} Biz. days)`
+      pTag.style = 'line-height: 1.25rem'
+    }
+  }
+}
+
+function pdpTableviewAddToCart(addToCartUrl, targetElement) {
+  htmx.ajax('GET', `${addToCartUrl}`, { target: targetElement, indicator: 'none' })
+}
+
+/**
+ * @description function used to display the shipping estimate message after applying zipcode
+ * @param {*} event 
+ */
+function showZipDescriptionHideZipInput(event) {
+  document
+    .getElementById("edd-enter-zipcode-container")
+    .classList.add("hidden");
+  document.getElementById("edd-shipto-container").classList.remove("hidden");
+  const zipCode = utils.getCookie("WCDE_ESTIMATE_ZIP_CODE");
+  document.getElementById("edd-entered-zipcode").innerHTML = (zipCode || "")?.slice(0, 5);
+  event?.target?.removeAttribute("data-state");
+}
+
+function EstimatedDeliveryDateTagging() {
+  sendLinkEvent({
+    event_name: 'pdp delivery date click',
+    ui_link_name: 'apply'
+  })
+}
+
+const handlePdpResizeEvents = () => {
+  window.addEventListener("resize", () => {
+    resizeFeaturedItemTableCells()
+  });
+}
+
+//
+// window onload events
+//
+document.addEventListener("DOMContentLoaded", () => {
+  const modal_container =
+    document.getElementById("product-details-tableview-lightbox-stage") ??
+    false;
+  if (modal_container) {
+    // bind modal click if modal present
+    modal_container.addEventListener("click", (event) => {
+      if (
+        event.target.id == "product-details-tableview-lightbox-stage" ||
+        event.target.id == "tv-widget-close-button"
+      ) {
+        closePdpTVLightbox();
+      }
+    });
+    // resize events if modal present
+    handlePdpResizeEvents();
+  }
+
+  //Handle "Go Back" button click with fallback if no history exists
+  const goBackBtn = document.getElementById("goBackBtn");
+  if (!goBackBtn) return;
+  goBackBtn.addEventListener("click", () => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    const fallbackUrl = goBackBtn.dataset.fallbackUrl || "/";
+    window.location.href = fallbackUrl;
+  });
+
+  // PowerReview configuration
+  const container = document.querySelector("#review-container-box");
+  if (container) {
+    const dataset = { ...container.dataset }; //using spread operator
+    const pwrConfig = {
+      api_key: dataset.apiKey,
+      locale: dataset.locale,
+      merchant_group_id: dataset.merchantGroupId,
+      merchant_id: dataset.merchantId,
+      merchant_user_email: dataset.userEmail,
+      page_id: dataset.pageId,
+      review_wrapper_url: dataset.reviewUrl,
+      components: {
+        Write: "pr-write",
+      },
+    };
+
+    // Initialize PowerReview rendering function
+    window.pwr =
+      window.pwr ||
+      function () {
+        (pwr.q = pwr.q || []).push(arguments);
+      };
+    // Attempt to render PowerReview component
+    if (typeof pwr !== "undefined") {
+      pwr("render", pwrConfig);
+    } else {
+      const fallbackContainer = document.getElementById("pr-write");
+      if (fallbackContainer) {
+        fallbackContainer.innerHTML = "Unable to load reviews."; //Fallback message if PowerReview fails to load
+      }
+    }
+  }
+});
+
+function updateProductPath(path) {
+  if (path.includes("/product/") && !path.includes("/product/details/")) {
+    return path.replace(/\/product\/(?!details)/, "/product/details/");
+  }
+  return path;
+}
+
+let noChangeCount = 0;
+const checkInterval = setInterval(() => {
+  if (document.hidden) return;
+  const anchorelements = document.querySelectorAll("a.pr-underline");
+  const currentHost = window.location.host;
+  let updatedCount = 0;
+  if (anchorelements.length > 0) {
+    anchorelements.forEach((anchorelement) => {
+      try {
+        const url = new URL(anchorelement.href);
+        const originalHref = anchorelement.href;
+        url.host = currentHost;
+        anchorelement.href = updateProductPath(url.toString());
+        if (originalHref !== anchorelement.href) updatedCount++; // Track actual changes
+      } catch (error) {
+        console.warn("Failed to update PowerReview link:", anchorelement.href);
+      }
+    });
+  }
+
+  // Update thank-you page link to match current host
+  const thankYouLink = document.querySelectorAll(".thank-you-page a[href]")[0]
+    ?.baseURI;
+
+  if (thankYouLink === null) return;
+  const pageHost = window.location.host;
+  const thankYouLinkElement = document.querySelectorAll(".thank-you-page a")[1];
+  if (!thankYouLinkElement?.host) return;
+
+  try {
+    const url = new URL(thankYouLinkElement.href);
+    const originalHref = thankYouLinkElement.href;
+    url.host = pageHost;
+    thankYouLinkElement.href = updateProductPath(url.toString());
+
+    if (originalHref !== thankYouLinkElement.href) {
+      updatedCount++;
+    }
+  } catch (error) {
+    console.warn("Failed to update thank you link:", thankYouLinkElement.href);
+  }
+}, 1000);
+
+window.addEventListener("beforeunload", () => {
+  if (updatedCount === 0) {
+    noChangeCount++;
+    if (noChangeCount >= 10) {
+      clearInterval(checkInterval);
+    }
+  } else {
+    noChangeCount = 0; // Reset counter when changes occur
+  }
+});
+
+
+
+htmx.onLoad(function (elt) {
+  if (elt.matches("[data-trigger='getCurrentItemDataFromPDP']")) {
+    getCurrentItemDataFromPDP();
+  }
+});
+
+//
+// resize table cells 
+//
+var currentPdpTablewiewTab = 'tab-data-0'
+
+const setCurrentPdpTableviewTab = (selectedTabId) => {
+  currentPdpTablewiewTab = selectedTabId
+  resizeFeaturedItemTableCells()
+}
+
+const resizeFeaturedItemTableCells = () => {
+  const featuredItemTableWidth = document.querySelectorAll('#pdp-tv-current-item')[0]?.getBoundingClientRect()?.width
+  const baseTableWidth = document.querySelectorAll(`#${currentPdpTablewiewTab} table:first-child`)[0]?.getBoundingClientRect()?.width
+  const elemPdpTableviewFeaturedItemCells = document.querySelectorAll('#pdp-tv-current-item tr:first-child th')
+  const selectorForTableRowCells = `#${currentPdpTablewiewTab} table:first-child tr:first-child th`
+  const elemPdpTableViewTableRowCells = document.querySelectorAll(selectorForTableRowCells)
+
+  const syncFeaturedItemCellsToPdpTableViewCallsize = () => {
+    let featureTable = Array.from(elemPdpTableviewFeaturedItemCells) ?? []
+    let baseTable = Array.from(elemPdpTableViewTableRowCells) ?? []
+    let baseTableArrayLength = baseTable.length
+    let scrollBarWidth = featuredItemTableWidth - baseTableWidth
+    for (cell in featureTable) {
+      let currentCellWidth = baseTable[cell].getBoundingClientRect()?.width ?? false
+      if (currentCellWidth && currentCellWidth > 0) {
+        let tableWidthDelta = (cell != baseTableArrayLength - 1) ? 0 : scrollBarWidth
+        featureTable[cell].style.width = `${currentCellWidth + tableWidthDelta}px`
+      }
+    }
+
+  }
+
+  if (featuredItemTableWidth && baseTableWidth) {
+    syncFeaturedItemCellsToPdpTableViewCallsize()
+  }
+}
+
+const triggerFlyerDealsUtag = (event) => {
+  if (event.detail.xhr.status === 200) {
+    sendLinkEvent({ 'event_name': 'offer impression', 'offer_name': 'flyer deals' })
+  }
+}
+
+const handleFlyerDealsAfterReq = (event) => {
+  const bannerRoot = document.getElementById("flyerdeals-banner-root");
+  const dialogRoot = document.getElementById("flyerdeals-detailsdialog-root");
+  if (event.detail.xhr.response.trim()) {
+    bannerRoot.style.display = "flex";
+  } else {
+    bannerRoot.style.display = "none";
+    dialogRoot.style.display = "none";
+  }
+};
+
+const handleFdQtyInput = () => {
+  const fdQtyInput = f('#fd-modal-qty-input')
+  if (fdQtyInput.value.length > fdQtyInput.maxLength) {
+    fdQtyInput.value = fdQtyInput.value.slice(0, fdQtyInput.maxLength);
+  }
+  if (fdQtyInput.value.trim() === '' || parseFloat(fdQtyInput.value) < 1) {
+    fdQtyInput.classList.add('errorClass');
+    const fdAddToCartBtn = f('#fd-addtocart');
+    if(fdAddToCartBtn) {
+      fdAddToCartBtn.disabled = true;
+    }
+  } else {
+    fdQtyInput.classList.remove('errorClass');
+  }
+}
+
+const handleFdQtyUpdate = (price) => {
+  const fdQtyInput = f("#fd-modal-qty-input");
+  const fdAddToCartBtn = f("#fd-addtocart");
+  const totalPriceEl = f("#fd-modal-lowest-price");
+  if (fdQtyInput.value.length > fdQtyInput.maxLength) {
+    fdQtyInput.value = fdQtyInput.value.slice(0, fdQtyInput.maxLength);
+  }
+  // if empty or non valid input like zero, we will add error class to input and set single item price
+  if (fdQtyInput.value.trim() === "" || parseFloat(fdQtyInput.value) < 1) {
+    fdQtyInput.classList.add("errorClass");
+    const singlePriceValue = f("#fd-priceDisplayValue");
+    if (totalPriceEl) {
+      totalPriceEl.innerText = singlePriceValue?.value;
+    }
+    if (fdAddToCartBtn) {
+      fdAddToCartBtn.disabled = true;
+    }
+  } else {
+    fdQtyInput.classList.remove("errorClass");
+    if (fdAddToCartBtn) {
+      fdAddToCartBtn.disabled = false;
+    }
+    const cartResponseMsgEl = f("#add-to-cart-response");
+    if (cartResponseMsgEl.firstChild) {
+      cartResponseMsgEl.removeChild(cartResponseMsgEl.firstChild);
+      // making add to cart btn visible on qty update since we made hidden on after request of AddToCart API call
+      // so user can add item to cart again
+      if (fdAddToCartBtn) {
+        fdAddToCartBtn?.classList.remove("hidden");
+      }
+    }
+    const qty = Number(fdQtyInput.value);
+    let totalPrice = Number(qty * Number(price)).toFixed(2);
+    const qtyPriceEl = f(".fd-tier-list-price");
+
+    // if product has quantity break prices, making price bold for updated qty range price
+    if (qtyPriceEl.length > 0) {
+      const fdBreakPriceListScriptId = f("#fd-script-data");
+      // getting qty break pricing json data from ldScript
+      const { quantityBreakPriceList } = JSON.parse(
+        fdBreakPriceListScriptId.textContent
+      );
+      const matchedQtyPriceObj = quantityBreakPriceList.find(
+        ({ fromQuantity, toQuantity }) =>
+          qty >= fromQuantity && qty <= toQuantity
+      );
+      // matching with all price fields of tier price table
+      qtyPriceEl.forEach((ele) => {
+        ele.classList.remove("font-bold");
+        if (ele.innerText == matchedQtyPriceObj?.priceDisplayText) {
+          totalPrice = Number(qty * Number(matchedQtyPriceObj?.price)).toFixed(
+            2
+          );
+          ele.classList.add("font-bold");
+        }
+      });
+    }
+    if (totalPriceEl) {
+      // updating total price value into DOM
+      const totalPriceValueEl = f("#fd-total-cart-price");
+      const totalPriceText = "$" + utils.formatNumberWithCommas(totalPrice);
+      totalPriceValueEl.value = totalPrice;
+      totalPriceEl.innerText = totalPriceText;
+    }
+  }
+};
+
+// will be triggered after add to cart API call on Flyer deal dialog
+const handleFdAddToCartAfterReq = (event) => {
+  if (event.detail.xhr.status === 200) {
+    const fdAddToCartButtonEl = f("#fd-addtocart");
+    fdAddToCartButtonEl?.classList.add("hidden");
+  }
+};
+
+const validateFdQtyEmptyInput = (event, value) => {  
+  if (value.trim() === '' || parseFloat(value && value) < 1) {
+    event.preventDefault();
+    const totalPriceEl = f('#fd-modal-lowest-price');
+    const price = f('#fd-priceDisplayValue')
+    totalPriceEl.innerHTML = price.value
+  }
+}
+
+const handleGetMyList = () =>  {
+  const isGetMylist = f("#addItemsToList");
+  if(!isGetMylist) return
+
+  const myListElem = f("#myList");
+  let getListID = myListElem.value;
+  const selectedIndex = myListElem.selectedIndex;
+  const option = myListElem[selectedIndex];
+  const listIdValue = getListID === "Create" ? "" : option.getAttribute("data-id");
+  f("#hiddenListID").setAttribute("value",listIdValue);
+
+  if(getListID === "Create"){
+    f('#create_new').classList.remove('hidden');
+    if(f('#list_name')) {
+    f('#list_name').value = '';
+  }
+  }else{
+    f('#create_new').classList.add('hidden');
+    if(f('#list_name')) {
+    f('#list_name').value = option?.innerHTML || '';
+  }
+  }
+}  
+const hardRestrictionLink = () => {
+  const hardLink = f('#container-hard-link')
+  const hardLinkWithPDP = f('#container-hard-pdp')
+  if(hardLink && hardLinkWithPDP){
+    hardLinkWithPDP.style.display = 'none';
+    hardLink.style.display = 'block';
+  }
+}
+
+const showItemDetails = () => {
+  const hardLink = f('#container-hard-link')
+  const hardLinkWithPDP = f('#container-hard-pdp')
+  hardLinkWithPDP.style.display = 'block';
+  hardLink.style.display = 'none';
+}
+
+const tabsActiveToggler = () => {
+  const isSpecificationTabView = f("#specificationTabView");
+  if(!isSpecificationTabView) return
+  
+  const stickyTabEles = document.getElementsByClassName('product-sticky-nav-link')
+   for (let i = 0; i < stickyTabEles.length; i++) {
+      stickyTabEles[0].classList.add('active')
+      stickyTabEles[i].addEventListener("click", function() {
+          let allActive = document.getElementsByClassName('active')
+          for (let j = 0; j < allActive.length; j++) {
+              if(allActive[j]?.classList?.contains('active')){
+                allActive[j]?.classList.remove('active')
+              }
+          }
+        this.classList.add('active');    
+    });  
+  }
+}
+
+const deliveryDateRemovedHtml = () => {
+   f("#delivery-date-container")?.classList?.remove("hidden");
+    showZipDescriptionHideZipInput();
+}
+
+const generateErrorAndInvalidZip = (eventResponse) => {
+  const zipResponseFlag = JSON.parse(eventResponse)
+  if(zipResponseFlag.isZipInvalid) {
+    var zipcodeElm = f('#add-zip-code');
+    if (zipcodeElm) {
+      toggleZipInputVisibility();
+      zipcodeElm.setCustomValidity('Invalid Zip Code');
+    }
+  } else {
+    var iconElm = document.querySelector("#delivery-date-container i");
+    var spanElm = document.querySelector("#delivery-date-container span");
+    if (iconElm && spanElm) {
+      iconElm.setAttribute("class", "fas fa-exclamation-triangle tw-text-warning-orange m-2");
+      spanElm.textContent = "We cannot determine the delivery date with this zipcode";
+      document.querySelector("#delivery-date-container")?.classList?.remove("hidden");
+    }
+  }
+}
+
+const checkDeliveryHtml = (event) => {
+  if(event.detail.xhr.status === 200) {
+    deliveryDateRemovedHtml()
+  } else {
+    generateErrorAndInvalidZip(event.detail.xhr.response)
+  }
+
+}
+
+const showProductDetailsIfWebCollageHasData = () => {
+    const subNavManufacturersLink = f('#pdp-mfr-wc');
+    const subNavManufacturersLiTag = f('#prodWebCollage');
+    const productDetailsContainer = f('#product-details-container');
+    const productLink = f('.product-sticky-nav-link.product-details');
+    if(productLink){
+        if(productLink[0]) productLink[0].style.display = 'inline-block';
+        if(productLink[1]) productLink[1].style.display = 'inline-block';
+    }
+    if(productDetailsContainer){
+        productDetailsContainer.style.display = 'block';
+    }
+    if (subNavManufacturersLink) {
+        subNavManufacturersLink.style.display = 'block';
+    }
+    if (subNavManufacturersLiTag) {
+        subNavManufacturersLiTag.style.display = 'block';
+    }
+};
+
+const handleAltsCompareExpansion = () => {
+  const toggleButtonId = f('#toggleButton');
+  if(!toggleButtonId) return;
+
+  toggleButtonId
+      .addEventListener('click', function () {
+          sendLinkEvent({
+            event_name: 'pdp click',
+            ui_link_name: 'compare alternate products',
+          });
+        const elements = document.querySelectorAll('.hidd-cont');
+        elements.forEach(element => {
+          element.classList.toggle('hidden');
+        });
+        const icon = document.getElementById('showAllSectionIcon');
+        if (icon) {
+          icon.classList.toggle('fa-plus');
+          icon.classList.toggle('fa-minus');
+        }
+    });
+}
+
+const loadMobileAltsContainers = () => {
+  let isExpanded = false;
+  const mobileToggleId = f('#mobileToggleComparison');
+  if(!mobileToggleId) return;
+
+  mobileToggleId.addEventListener('click', ()=> {
+    sendLinkEvent({
+        event_name: 'pdp click',
+        ui_link_name: 'compare alternate products',
+    });
+    const isAlternateExpanded = f('#alternate-expanded-mode');
+    const isAlternateCollapsed = f('#alternate-collapsed-mode');
+    isAlternateExpanded.style.display = 'none'; // Default hide the expanded view
+
+    if(isExpanded) {
+      f('#alternate-compare-toggle').classList.add('fa-plus');
+      f('#alternate-compare-toggle').classList.remove('fa-minus');
+      isAlternateExpanded.style.display = 'none';
+      isAlternateCollapsed.style.display = 'block';
+      isExpanded = false;
+    } else {
+      f('#alternate-compare-toggle').classList.remove('fa-plus');
+      f('#alternate-compare-toggle').classList.add('fa-minus');
+      isAlternateExpanded.style.display = 'block';
+      isAlternateCollapsed.style.display = 'none';
+      isExpanded = true;
+    }
+  })
+
+}
+
+function toggleSpecifications(basePartNumber) {
+  const hiddenSpecs = document.getElementById('spec-preview-hidden');
+  const specFeedback = document.getElementById('spec-feedback')
+  const isHidden = hiddenSpecs?.classList.contains('hidden');
+  const specificationsToggleText = document.getElementById('specifications-toggle-text');
+  const specificationsToggleChevron = document.getElementById('specifications-toggle-chevron');
+
+  if (isHidden) {
+    specificationsToggleText.innerHTML = 'Show less product specifications';
+    specificationsToggleChevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+  } else {
+    specificationsToggleText.innerHTML = 'See all product specifications';
+    specificationsToggleChevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+  }
+  sendLinkEvent({
+    event_name: 'pdp click',
+    product_id: [`${basePartNumber}`],
+    ui_link_name: 'product specifications'
+  })
+  hiddenSpecs.classList.toggle('hidden');
+  specFeedback.classList.toggle('hidden')
+}
+
+function handleAlternatesAfterSwap(){
+  const alternateProductsWidget = document.getElementById("alternate-products-widget")
+  if (alternateProductsWidget){
+    alternateProductsWidget.addEventListener('htmx:afterSwap', function(event) {
+      _bindChoicesToSelects()
+      _validateParts()
+      bind.addToList()
+    })
+  }
+}
+
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  handleAlternatesAfterSwap()
+})
+
+
+
+const dropDownOpen = () => {
+  const dropDown = document.querySelector('#dropDown');
+  const tableSection = document.querySelector('#shopProductRange');
+  const detailText = document.querySelector('#detailText');
+
+  dropDown?.classList.toggle('rotate-180');
+  tableSection?.classList.toggle('hidden');
+
+  if (detailText) {
+    detailText.textContent =
+      detailText.textContent.trim() === 'Hide' ? 'View' : 'Hide';
+  }
+};
+
+const streamlinedPdp = {
+  specificationsDropdownToggle: () => {
+    const dropDownSpec = document.getElementById('specifications-dropdown-button');
+    dropDownSpec.classList.toggle('rotate-180');
+
+    const tableSection = document.querySelectorAll('#specifications-table .hc');
+    tableSection.forEach(section => {
+      section.classList.toggle('hidden');
+    });
+  },
+
+  calculateItemPrice: (elemId, label = "") => {
+    // Get DOM elements
+    const quantityErrorElem = getByName(`quantity-input-error${label}`);
+    const quantityElem = getByName(`${elemId}${label}`);
+    const quantityInputElem = getByName(`pdp-quantity-input${label}`);
+    const lengthInputElem = getByName(`length${label}`);
+    const totalPriceElem = document.getElementById('totalPriceId');
+    const totalPriceStickyNavElem = document.getElementById("totalPriceIdStickyNav") || {};
+
+    // Get values
+    const length = getElementValue(lengthInputElem) || 1;
+    const quantityInput = getElementValue(quantityInputElem, 1);
+    let quantity = quantityElem && quantityElem.length > 0 
+      ? getElementValue(quantityElem, 1) 
+      : 1;
+
+    quantity = Math.max(quantity, quantityInput);
+
+    if (quantityErrorElem && quantityErrorElem.length > 0) {
+      quantityErrorElem[0].innerHTML = '';
+    }
+    
+    const hasLengthInput = lengthInputElem && lengthInputElem.length > 0 && document.getElementById('pdp-input-length');
+    if (hasLengthInput) {
+      validateInputLength(lengthInputElem, quantity);
+    }
+
+    if (totalPriceElem) {
+      const totalQuantity = Number(length) * Number(quantity);
+      highlightRangePrice(totalQuantity);
+      
+      const webPriceElem = document.getElementById('webPriceId') || {};
+      const matchingPriceItem = priceObject?.priceList?.find(item => 
+        item.price && item.fromQuantity <= totalQuantity && item.toQuantity >= totalQuantity
+      );
+
+      if (matchingPriceItem) {
+        const calculatedTotal = Number(totalQuantity) * Number(matchingPriceItem.price);
+        const formattedPrice = '$' + utils.formatNumberWithCommas(calculatedTotal.toFixed(2));
+        
+        webPriceElem.innerHTML = matchingPriceItem.priceDisplayText || '';
+        totalPriceElem.innerHTML = formattedPrice;
+        
+        if (totalPriceStickyNavElem) {
+          totalPriceStickyNavElem.innerHTML = formattedPrice;
+        }
+      }
+    }
+  },
+
+  updatePdpInputLength: (label = "") => {
+    document.getElementById('pdp-input-length').value = document.getElementById('select-length').value;
+    streamlinedPdp.calculateItemPrice('quantity', label);
+  },
+
+  incrementQuantity: () => {
+    const input = document.getElementById('pdp-quantity');
+    const min = parseInt(input.getAttribute('data-min')) || 1;
+    const maxLength = parseInt(input.getAttribute('maxlength')) || 5;
+    let currentValue = parseInt(input.value);
+
+    let cartErrorMessage = document.getElementById('cart-error-message');
+    let qtyError = document.getElementsByClassName("pdp-qty-error")[0];
+
+    if (isNaN(currentValue) || currentValue < 1) {
+        input.value = min;
+    } else {
+        let newValue = currentValue + 1;
+        if (newValue.toString().length <= maxLength) {
+            input.value = newValue;
+           }
+          }
+          input.dispatchEvent(new Event('keyup'));
+          qtyError.style.display =  (qtyError != undefined) ? 'none' : ''; 
+          input.classList.remove("errorClass"); 
+          cartErrorMessage.style.display =  (cartErrorMessage != undefined) ? 'none' : ''; 
+  },
+
+  enforceMinQuantity(input) {
+    if (input.value === '' || Number(input.value) < 1) {
+       input.value = '';
+       }
+   },
+
+decrementQuantity: () => {
+  const input = document.getElementById('pdp-quantity');
+  const min = parseInt(input.getAttribute('data-min')) || 1;
+
+  let currentValue = parseInt(input.value) || min;
+  let newValue = currentValue - 1;
+
+  // Ensure the new value doesn't go below the minimum
+  if (newValue >= min) {
+      input.value = newValue;
+      input.dispatchEvent(new Event('keyup')); // Trigger any keyup listeners like calculateItemPrice
+  }
+},
+
+// Quantity update debounce function for plus/minus buttons
+triggerQuantityUpdate() {
+  if (!this.quantityUpdateTimer) {
+    this.quantityUpdateTimer = null;
+  }
+  clearTimeout(this.quantityUpdateTimer);
+  this.quantityUpdateTimer = setTimeout(() => {
+    const input = document.getElementById('pdp-quantity');
+    if (input) {
+      htmx.trigger(input, 'change');
+    }
+  }, 500);
+}
+};
+
+/* WINDOW ONLOAD EVENTS FOR STREAMLINED PDP */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  document.getElementById('specifications-dropdown-button')?.addEventListener('click', streamlinedPdp.specificationsDropdownToggle);
+
+  setTimeout(() => {
+    // Get input elements
+    const lengthInput = document.getElementById('pdp-input-length');
+    const selectLength = document.getElementById('select-length');
+    const quantityInput = document.getElementById('pdp-quantity');
+
+    const setMinimumValue = (element) => {
+      if (!element) return;
+      const minQty = element.getAttribute('data-min') || 1;
+      element.value = minQty;
+    };
+
+    setMinimumValue(lengthInput);
+    setMinimumValue(selectLength);
+    setMinimumValue(quantityInput);
+
+    const isCTLProduct = lengthInput || selectLength;
+    const label = isCTLProduct ? '-new' : '';
+    
+    if (isCTLProduct || quantityInput) {
+      calculateItemPrice('quantity', label);
+    }
+  }, 100);
+
+})
+
+// STREAMLINED PDP
+function toggleSpecificationsLink(basePartNumber) {
+  const hiddenRows = document.querySelectorAll('.specification-row-hidden');
+  const toggleText = document.getElementById('specifications-toggle-text');
+  const dropdownBtn = document.getElementById('specifications-dropdown-button');
+  const specFeedback = document.getElementById('spec-feedback');
+  let isHidden = true;
+  hiddenRows.forEach(row => {
+    if (!row.classList.contains('hidden')) isHidden = false;
+  });
+  
+  // Calculate scroll position BEFORE collapsing
+  let targetScrollPosition = null;
+  if (!isHidden) {
+    const specTable = document.getElementById('specifications-table');
+    if (specTable) {
+      const rect = specTable.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      targetScrollPosition = rect.top + scrollTop - 200;
+    }
+  }
+  
+  if (isHidden) {
+    hiddenRows.forEach(row => row.classList.remove('hidden'));
+    toggleText.textContent = 'Show less specifications';
+    dropdownBtn.classList.remove('rotate-180');
+    if (specFeedback) specFeedback.classList.remove('hidden');
+  } else {
+    hiddenRows.forEach(row => row.classList.add('hidden'));
+    toggleText.textContent = 'Show all specifications';
+    dropdownBtn.classList.add('rotate-180');
+    if (specFeedback) specFeedback.classList.add('hidden');
+    
+    // Scroll to the specifications table when collapsing
+    if (targetScrollPosition !== null) {
+      setTimeout(() => {
+        window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
+      }, 100);
+    }
+  }
+  sendLinkEvent({
+    event_name: 'pdp click',
+    //product_id: [`${basePartNumber}`],
+    ui_link_name: 'see all product specifications'
+  })
+}
+function writeReviewLink(basePartNumber) {
+   sendLinkEvent({
+    event_name: 'pdp write review click',
+    product_id: [`${basePartNumber}`],
+  })
+}
+
+const productScrollPosition = () => {
+  const showMoreRowsContainer = f('#alternate-products-widget');
+  const showMoreRows = f('.product-compare-show-more')
+  let targetScrollPosition = null; 
+  if(showMoreRowsContainer) { 
+    let isScrollable = true;
+    showMoreRows.forEach(row => {
+      if (!row.classList.contains('f-hidden')) isScrollable = false;
+    });
+    const rect = showMoreRowsContainer.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    targetScrollPosition = rect.top + scrollTop - 200;
+
+    // Scroll to the alts heading when collapsing
+    if (isScrollable && targetScrollPosition !== null) {
+      setTimeout(() => {
+        window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
+      }, 100);
+    }       
+  }
+}
+
+  const initializeQuantityInput = () => {
+    const quantityInput = document.getElementById('pdp-quantity') || 
+                         document.getElementById('pdp-input-quantity') || 
+                         document.getElementById('quantity');
+  
+    if (!quantityInput) return;
+    
+    const minValue = parseInt(quantityInput.getAttribute('data-minorderquantity') || 
+                             quantityInput.getAttribute('data-min') || 
+                             quantityInput.getAttribute('min')) || 1;
+    
+    const currentValue = parseInt(quantityInput.value);
+    
+    if (!quantityInput.value?.trim() || isNaN(currentValue) || currentValue < minValue) {
+      quantityInput.value = minValue;
+      quantityInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+// Specifications table toggle for mobile
+toggleSpecifications = function(basePartNumber) {
+  const tbody = document.querySelector('.specs-tbody');
+  const specificationsToggleText = document.getElementById('specifications-toggle-text');
+  const specificationsToggleChevron = document.getElementById('specifications-toggle-chevron');
+  
+  if (!tbody) return;
+  
+  const isExpanded = tbody.classList.contains('expanded');
+  
+  if (isExpanded) {
+    tbody.classList.remove('expanded');
+    if (specificationsToggleText) specificationsToggleText.innerHTML = 'Show All Specifications';
+    if (specificationsToggleChevron) specificationsToggleChevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+  } else {
+    tbody.classList.add('expanded');
+    if (specificationsToggleText) specificationsToggleText.innerHTML = 'Show Less Specifications';
+    if (specificationsToggleChevron) specificationsToggleChevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+  }
+   sendLinkEvent({
+    event_name: 'pdp click',
+    product_id: [`${basePartNumber}`],
+    ui_link_name: 'product specifications'
+  })
+};
+  
+
+const scrollToAlternatives = () => {
+  sendLinkEvent({
+    event_name: 'pdp click',
+    ui_link_name: 'view alternatives'
+  })
+  const alternateSection = document.getElementById('alternateContainer');
+  if (!alternateSection) return;
+  const top = alternateSection.getBoundingClientRect().top + window.pageYOffset - 64;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
+const cad2dDrawingButtonEvent = (basePartnumber) => {
+  let cadDrawingButton = f('#cds-cad-view-2D-button') ? f('#cds-cad-view-2D-button') : '';
+    if(cadDrawingButton) {
+      sendLinkEvent({
+          event_name: 'product cad click',
+          product_id: [ `${basePartnumber}` ],
+          ui_link_name: 'view 2d drawing'
+      })
+    }
+}
+
+const cdsCadViewer = (basePartnumber) => {
+    let cadIconContainer = f('#cds-icon-container') ? f('#cds-icon-container') : '';
+    if(cadIconContainer) { 
+      sendLinkEvent({
+              event_name: 'product cad click',
+              product_id: [ `${basePartnumber}` ],
+              ui_link_name: 'cad view options'
+      })
+    }
+}

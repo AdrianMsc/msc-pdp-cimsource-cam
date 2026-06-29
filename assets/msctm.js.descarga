@@ -1,0 +1,225 @@
+const msctm = {
+    config: {
+        maxRetries: 10,
+        retryDelay: 500
+    },
+    getDataFromJsonScriptTag: (elem) => {
+        try {
+            return JSON.parse(elem.innerHTML)
+        } catch(error) {
+            console.log(`msctm: error parsing data`)
+            return {}
+        }
+    },
+    // retry
+    eventRetryCounter: {},
+    setOrIncrementEventRetryCounter: (eventId) => {
+        if(typeof msctm.eventRetryCounter[eventId] === 'number') msctm.eventRetryCounter[eventId]++
+        else msctm.eventRetryCounter[eventId] = 0
+    },
+    eventRetry: {
+        sendLinkEvent: (obj, eventId) => {
+            if(msctm.eventRetryCounter[eventId] < msctm.config.maxRetries) {
+                setTimeout(msctm.sendLinkEvent, msctm.config.retryDelay, obj, eventId)
+            } else {
+                console.log(`msctm: max number of link event retries reached`)
+            }
+        },
+        sendSyndBuildRequest: (eventId) => {
+            if(msctm.eventRetryCounter[eventId] < msctm.config.maxRetries) {
+                setTimeout(msctm.sendSyndBuildRequest, msctm.config.retryDelay, eventId)
+            } else {
+                console.log(`msctm: max number of syndi build retries reached`)
+            }
+        }
+    },
+    // tm
+    sendLinkEvent: (eventObject, eventId) => {
+        const isUtagReady = () => typeof utag === 'object' && typeof utag.link === 'function'
+        if(isUtagReady()){
+            if(msctm.isValidObject(eventObject)) {
+                utag.link(eventObject)
+            } else {
+                console.log(`msctm: utag.link() failure, could not send event`)
+            }
+        } else {
+            const generateEventId = () => (Math.random() + 1).toString(36).substring(2)
+            const utagLinkId = !eventId ? `linkEvent_${generateEventId()}` : eventId
+            msctm.setOrIncrementEventRetryCounter(utagLinkId)
+            msctm.eventRetry.sendLinkEvent(eventObject, utagLinkId)
+        }
+    },
+    setOverride: () => {
+        window.utag_cfg_ovrd = {
+            noview: true
+        }
+    },
+    // syndi
+    sendSyndBuildRequest: () => {
+        const isSyndiReady = () => typeof Webcollage === 'object' && typeof Webcollage.loadContent === 'function'
+        if(isSyndiReady()){
+            window.SYNDI = window.SYNDI || []
+            SYNDI.push(webCollageJsonData.webCollagePartNumber)
+            window.Webcollage.loadContent('msc', webCollageJsonData.webCollagePartNumber, {
+                hasPowerPageContentCallback: showProductDetailsIfWebCollageHasData
+            })
+        } else {
+            const eventId = 'syndi'
+            msctm.setOrIncrementEventRetryCounter(eventId)
+            msctm.eventRetry.sendSyndBuildRequest(eventId)
+        }
+    },
+    // dynamic scripts
+    insert: { 
+        tagTm: () => {
+            const msctmEnvData = window.utag_env
+            const acc = msctmEnvData.acc ?? 'mscdirect'                
+            const prf = msctmEnvData.prf ?? 'main'                
+            const env = msctmEnvData.env ?? 'prod' // check domain and update               
+            a = `//tags.tiqcdn.com/utag/${acc}/${prf}/${env}/utag.js`
+            b = document
+            c = "script"
+            d = b.createElement(c)
+            d.src = a
+            d.type = "text/java" + c
+            d.async = true
+            a = b.getElementsByTagName(c)[0]
+            a.parentNode.insertBefore(d, a)
+        },
+        tagSynd: () => {
+            a = `//scontent.webcollage.net/api/v2/product-content`
+            b = document
+            c = "script"
+            d = b.createElement(c)
+            d.src = a
+            d.type = "text/java" + c
+            d.async = true
+            a = b.getElementsByTagName(c)[0]
+            a.parentNode.insertBefore(d, a)
+        }
+    },
+    //
+    // data layer / processor
+    //
+    dataLayer: {
+        isLoaded: {
+            utagData: () => typeof utag_data === 'object',
+            utagEnv: () => typeof utag_env === 'object',
+            syndInfo: () => typeof webCollageJsonData === 'object'
+        },
+        process: {
+            utagData: (obj) => {
+                window.utag_data = msctm.validateAndReturnObject(obj)
+                if(msctm.dataLayer.isLoaded.utagEnv()){
+                    msctm.init()
+                }
+            }, 
+            utagEnv: (obj) => {
+                window.utag_env = msctm.validateAndReturnObject(obj)
+                if(msctm.dataLayer.isLoaded.utagData()){
+                    msctm.init()
+                }
+            },
+            syndInfo: (obj) => {
+                window.webCollageJsonData = msctm.validateAndReturnObject(obj)
+                if(msctm.dataLayer.isLoaded.syndInfo()){
+                    msctm.insert.tagSynd()
+                    msctm.sendSyndBuildRequest()
+                }
+            },
+            linkEvent: (obj) => {
+                msctm.sendLinkEvent(obj)
+            },
+            targetData: (obj) => {
+                window.target = msctm.validateAndReturnObject(obj)
+            },
+            tvPs: (obj) => {
+                try {
+                    tvPs(obj)
+                } catch(e) {
+                    console.log(`Could not find tvPs()`)
+                }
+            },
+            tvPsClose: (obj) => {
+                try {
+                    if(typeof obj.id === 'string') tvPsClose(obj.id)
+                } catch(e) {
+                    console.log(`Could not find tvPsClose() for '${obj.id}'`)
+                }
+            }
+        }
+    },
+    //
+    // obj utils
+    //
+    isValidObject: (obj) => typeof obj === 'object',
+    validateAndReturnObject: (obj) => {
+        if(msctm.isValidObject(obj)) return obj
+        else return {}
+    },
+    //
+    // init
+    //
+    init: () => {
+        msctm.setOverride()
+        msctm.insert.tagTm()
+    }
+}
+
+const mscdom = {
+    targetNode:  document.documentElement,
+    observerConfig: {
+        attributes: false,       // watch for attribute changes
+        characterData: false,    // watch for text content changes
+        childList: true,        // watch for child node changes
+        subtree: true           // watch all descendant nodes as well
+    },
+    callback: (mutationList, observer) => {
+        const separator = '\n\n----------\n'
+        const debug = false
+        const isDomElement = (node) => node.nodeType === Node.ELEMENT_NODE
+        const isObserverData = (node) => node.tagName && node.dataset && node.dataset.type
+        const isValidElement = (node) => isDomElement(node) && isObserverData(node)
+        const sendDebugConsoleLogs = (node) => {
+            if(debug){
+                console.log("Added element:", node)
+                console.log("Element tag name:", node.tagName)
+                console.log("Element ID:", node.id)
+                console.log("Node data set test:", node.dataset, "/ has 'type':", node.dataset.type)
+                console.log(document.querySelectorAll(`[data-type=${node.dataset.type}]`))
+                console.log(node)
+            }
+        }
+
+        for (const mutation of mutationList) {
+            switch (mutation.type) {
+                case "childList":
+                    if(mutation.addedNodes.length > 0){
+                        for (const node of mutation.addedNodes) {
+                            if (isValidElement(node)) {
+                                sendDebugConsoleLogs(node)
+                                const dataType = node.dataset.type
+                                const data = msctm.getDataFromJsonScriptTag(node)
+                                try {
+                                    msctm.dataLayer.process[dataType](data)
+                                } catch(e) {
+                                    console.log(`mscdom: dataLayer failed to process '${dataType}'`)
+                                }
+                            }
+                        }
+                    }
+                break
+
+                case "attributes":
+                case "characterData":
+                case "subtree":
+                default:
+                    // no operation
+                break
+            }
+        }
+    }
+}
+
+observer = new MutationObserver(mscdom.callback)
+observer.observe(mscdom.targetNode, mscdom.observerConfig)

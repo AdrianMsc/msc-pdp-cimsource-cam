@@ -1,0 +1,48 @@
+var chatFlagValue = '2';
+var chatElement = f("#inFlightDataLiveChat");
+if (chatElement?.dataset)
+{
+  try {
+    const {
+      userType,
+      firstName,
+      lastName,
+      email,
+      cdnLocation,
+      webChatHost
+    } = chatElement?.dataset;
+
+        var loadAvayaChat = false;
+        loadAvayaChat = true;
+        var phone = '';
+        phone = (typeof phone !== 'undefined' && phone !=='' && phone.substring(0, 1)==='|') ? phone.substring(1) : '';
+        var chatParams = {
+            chatFlagValue: 2,
+            allowedTime: true,
+            userType: userType,
+            avayaGuestFlagEnabled: true,
+            punchOutSessionObject: false,
+            avayaPOFlagEnabled: true,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            chatPostInstructions: 'Chat is available Monday through Friday from 8:00 AM - 8:00 PM EST. U.S. Customers: For prompt service please call our MSC eCommerce Customer Care Team at 800-753-7970. International Customers: For prompt service please call our International Customer Care Team at 1-888-080-2048 (within the U.S.) or  001-248-200-4420 (outside the U.S.). Thank you.',
+            phoneNumber: phone,
+            cdnLocation: cdnLocation,
+            webChatHost: webChatHost,
+            coBrowseHost: webChatHost,
+            contextStoreHost: webChatHost,
+            interactionTypeSale: 'InteractionType.CC_Sales_Chat',
+            interactionTypeWebsite: 'InteractionType.CC_Website_Chat',
+            interactionTypeService: 'InteractionType.CC_Service_Chat',
+            interactionTypeProductInfo: 'InteractionType.CC_ProductInfo_Chat',
+            interactionTypeOther: 'InteractionType.CC_Other_Chat'
+            };
+  } catch (error) {
+    console.error("Failed to parse liveChatData:", error);
+  }
+}
+else
+{
+    console.error("Live chat configuration data could not be found.");
+}

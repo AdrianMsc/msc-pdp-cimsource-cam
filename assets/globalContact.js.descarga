@@ -1,0 +1,28 @@
+const helpNumber = '1-800-645-7270';
+const contactInfoIcon = /*HTML*/ `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7.0001 0.666626C10.672 0.666626 13.6668 3.66137 13.6668 7.33327C13.6668 11.0312 10.672 14 7.0001 14C3.3022 14 0.333496 11.0312 0.333496 7.33327C0.333496 3.66137 3.3022 0.666626 7.0001 0.666626ZM7.0001 3.99997C6.5314 3.99997 6.1668 4.39057 6.1668 4.83327C6.1668 5.30207 6.5314 5.66667 7.0001 5.66667C7.4428 5.66667 7.8335 5.30207 7.8335 4.83327C7.8335 4.39057 7.4428 3.99997 7.0001 3.99997ZM8.0418 10.6667C8.3803 10.6667 8.6668 10.4062 8.6668 10.0417C8.6668 9.70307 8.3803 9.41667 8.0418 9.41667H7.6251V7.12497C7.6251 6.78637 7.3387 6.49997 7.0001 6.49997H6.1668C5.8022 6.49997 5.5418 6.78637 5.5418 7.12497C5.5418 7.48957 5.8022 7.74997 6.1668 7.74997H6.3751V9.41667H5.9585C5.5939 9.41667 5.3335 9.70307 5.3335 10.0417C5.3335 10.4062 5.5939 10.6667 5.9585 10.6667H8.0418Z" fill="white"></path>
+            </svg>`;
+const sideIcons = {
+  createUi: () => {
+    if (enableSideIconsUi) {
+      const iconBigBook = "//cdn.mscdirect.com/global/v2/img/side-icons/bigbook-button.svg?v=3";
+      const iconContactUs = "//cdn.mscdirect.com/global/v2/img/side-icons/contact-us.svg?v=2"; 
+      const iconBigBookHtml = /*HTML*/ `
+        <div id="icon-bigbook" class="pdp-print-none" onclick="sideIconsUtility.openBigBook()">
+          <img src="${iconBigBook}" alt="view the big book">
+        </div>`; 
+      const iconContactUsHtml = /*HTML*/ `
+        <div id="icon-contact-us" class="pdp-print-none" onclick="sideIconsUtility.openSideContact(this)">
+          <div class="contact-badge">
+             ${contactInfoIcon}
+            <img src="${iconContactUs}" alt="${helpNumber}" class="mx-auto mt-2.5">
+          </div>
+          <div class="contact-info">
+            We are here to help <br/>
+            Call:<a href="tel:${helpNumber}">${helpNumber}</a>
+          </div>
+        </div>`; 
+      document.body.insertAdjacentHTML("beforeEnd", iconBigBookHtml + iconContactUsHtml);
+    }
+  }, 
+}; 

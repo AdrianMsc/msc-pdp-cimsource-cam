@@ -1,0 +1,61 @@
+.product-compare-table-row td:not(:first-child) {
+    background-color: white;
+    border-top: 2px solid rgb(229, 231, 235);
+    border-right: 2px solid rgb(229, 231, 235);
+    max-width: 37rem;
+    width: auto;
+}
+
+.unavailable-alert {
+    background-color: #fff;
+    color: #212121;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.product-compare-table-row .bg-primary-variant-4 {
+    background-color: rgba(241, 245, 254, 1) !important;
+}
+
+#quantity-break-lightbox{
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 600px;
+}
+
+#confirm-alternate-lightbox{
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+}
+
+.w-\[188px\]{
+    width: 188px;
+}
+
+.w-\[144px\]{
+    width: 144px;
+}
+
+@media (min-width: 768px) {
+    .md\:w-104 {
+        width: 104px;
+    }
+}
+
+.overflow-x-auto{
+    overflow-x: auto;
+}
+
+.font-size-15{
+    font-size: 15px;
+}
+
+.remove-stock-margin > #availabilityHtml > div:first-child {
+    margin-top: 0 !important;
+}
+
+#lightbox-loader-content {
+    max-width: none !important;
+}

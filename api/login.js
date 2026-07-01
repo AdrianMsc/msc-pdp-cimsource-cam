@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
   const token = jwt.sign({ authenticated: true }, JWT_SECRET, { expiresIn: '24h' });
 
   res.writeHead(302, {
-    Location: '/pdp',
+    Location: '/?success=1',
     'Set-Cookie': `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`,
   });
   res.end();

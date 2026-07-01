@@ -70,7 +70,7 @@ app.post('/api/login', (req, res) => {
     // [LOGIN DETECTOR - A RETIRAR] Firma el JWT que luego requireAuth detecta
     const token = jwt.sign({ authenticated: true }, JWT_SECRET, { expiresIn: '24h' });
     res.cookie('token', token, { httpOnly: true, maxAge: 86400000, sameSite: 'lax' });
-    return res.redirect('/pdp');
+    return res.redirect('/?success=1');
   }
   res.redirect('/?error=1');
 });

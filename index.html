@@ -16,6 +16,7 @@
       <p>Enter the password to continue</p>
 
       <div class="error-msg" id="errorMsg">Incorrect password. Please try again.</div>
+      <div class="success-msg" id="successMsg">login Successfully</div>
 
       <form action="/api/login" method="POST">
         <label for="password">Password</label>
@@ -30,6 +31,12 @@
       const params = new URLSearchParams(window.location.search);
       if (params.get('error') === '1') {
         document.getElementById('errorMsg').classList.add('visible');
+      }
+      if (params.get('success') === '1') {
+        document.getElementById('successMsg').classList.add('visible');
+        document.getElementById('password').disabled = true;
+        document.querySelector('button[type="submit"]').disabled = true;
+        window.location.href = '/pdp';
       }
     </script>
   </body>

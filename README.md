@@ -138,9 +138,14 @@ Cada vez que un usuario autenticado visita la página protegida `/pdp`, el siste
 |---------|-----|
 | `server.js:48-65` | Función `logAccess()` para el servidor local Express |
 | `server.js:32-42` | Middleware `requireAuth()` — detector de sesión JWT |
+| `server.js:70-73` | Redirige a `/?success=1` tras login exitoso |
 | `api/pdp.js:24-41` | Función `logAccess()` para el despliegue serverless en Vercel |
 | `api/pdp.js:14-22` | Helper `parseCookies()` — parsea cookies sin cookie-parser |
 | `api/login.js:18` | Firma del JWT — genera el token que luego se detecta |
+| `api/login.js:23` | Redirige a `/?success=1` tras login exitoso (Vercel) |
+| `index.html:19` | Mensaje "login Successfully" que se muestra con `?success=1` |
+| `index.html:35-39` | JS que bloquea el input y redirige a `/pdp` al mostrar el éxito |
+| `css/index.css:89-98` | Estilos del mensaje `.success-msg` (verde, oculto por defecto) |
 | `prisma/schema.prisma:9-18` | Modelo `AccessLog` — definición de la tabla en la BD |
 
 ### Flujo completo
@@ -148,9 +153,11 @@ Cada vez que un usuario autenticado visita la página protegida `/pdp`, el siste
 1. El usuario ingresa la contraseña en `/` → `POST /api/login`
 2. El servidor valida la contraseña y firma un JWT con `jwt.sign()`
 3. El JWT se almacena en una cookie HttpOnly (`token`)
-4. En cada request a `/pdp` o `/api/pdp`, el middleware `requireAuth()` (o la verificación inline en `api/pdp.js`) extrae y verifica el JWT
-5. Si el token es válido, se llama a `logAccess()` que persiste los datos del request en la tabla `AccessLog`
-6. Si el token falta o es inválido, se redirige a `/` (login)
+4. El servidor redirige a `/?success=1` en vez de directamente a `/pdp`
+5. La login page muestra el mensaje "login Successfully", bloquea el input de password y redirige inmediatamente a `/pdp`
+6. En cada request a `/pdp` o `/api/pdp`, el middleware `requireAuth()` (o la verificación inline en `api/pdp.js`) extrae y verifica el JWT
+7. Si el token es válido, se llama a `logAccess()` que persiste los datos del request en la tabla `AccessLog`
+8. Si el token falta o es inválido, se redirige a `/` (login)
 
 ### ¿Qué se eliminará?
 
@@ -160,6 +167,8 @@ Cada vez que un usuario autenticado visita la página protegida `/pdp`, el siste
 - El modelo `AccessLog` en `prisma/schema.prisma`
 - Las migraciones de Prisma asociadas a la tabla `access_log`
 - La dependencia de base de datos (Prisma + Neon)
+- El mensaje "login Successfully" y su lógica en `index.html` y `css/index.css`
+- Los redirects a `/?success=1` en `server.js` y `api/login.js`
 
 ## API Endpoints
 

@@ -100,6 +100,67 @@ msc-pdp-cimsource-cam/
 └── package.json
 ```
 
+## Sistema de logging de accesos (a retirar)
+
+> **⚠️ Este feature será eliminado en una fase posterior del desarrollo.**
+> Los segmentos de código están marcados con `[LOGIN DETECTOR - A RETIRAR]`.
+
+### Descripción
+
+Cada vez que un usuario autenticado visita la página protegida `/pdp`, el sistema registra la visita en la base de datos mediante la función `logAccess()`. Esto permite auditar qué usuarios (por IP/dispositivo) acceden a la página y cuándo.
+
+### ¿Qué se registra?
+
+| Campo | Descripción |
+|-------|-------------|
+| `ip` | Dirección IP del cliente (o `X-Forwarded-For` tras proxy) |
+| `userAgent` | Cabecera `User-Agent` del navegador (máx. 500 chars) |
+| `referer` | Cabecera `Referer` de la solicitud (máx. 1000 chars) |
+| `language` | Cabecera `Accept-Language` del navegador |
+| `fingerprint` | SHA-256 de `{ip}|{userAgent}` — identificador semianónimo del dispositivo |
+| `page` | Ruta de la página visitada (por defecto `/pdp`) |
+| `createdAt` | Marca de tiempo del acceso |
+
+### Arquitectura
+
+```
+                     logAccess()
+  Usuario autenticado ──────────► Prisma ──► PostgreSQL (neon.tech)
+                                       ▲
+                                  ┌────┴────┐
+                                  │ AccessLog │
+                                  └─────────┘
+```
+
+### Archivos involucrados
+
+| Archivo | Rol |
+|---------|-----|
+| `server.js:48-65` | Función `logAccess()` para el servidor local Express |
+| `server.js:32-42` | Middleware `requireAuth()` — detector de sesión JWT |
+| `api/pdp.js:24-41` | Función `logAccess()` para el despliegue serverless en Vercel |
+| `api/pdp.js:14-22` | Helper `parseCookies()` — parsea cookies sin cookie-parser |
+| `api/login.js:18` | Firma del JWT — genera el token que luego se detecta |
+| `prisma/schema.prisma:9-18` | Modelo `AccessLog` — definición de la tabla en la BD |
+
+### Flujo completo
+
+1. El usuario ingresa la contraseña en `/` → `POST /api/login`
+2. El servidor valida la contraseña y firma un JWT con `jwt.sign()`
+3. El JWT se almacena en una cookie HttpOnly (`token`)
+4. En cada request a `/pdp` o `/api/pdp`, el middleware `requireAuth()` (o la verificación inline en `api/pdp.js`) extrae y verifica el JWT
+5. Si el token es válido, se llama a `logAccess()` que persiste los datos del request en la tabla `AccessLog`
+6. Si el token falta o es inválido, se redirige a `/` (login)
+
+### ¿Qué se eliminará?
+
+- La función `logAccess()` en ambos archivos (`server.js`, `api/pdp.js`)
+- El middleware `requireAuth()` — se reemplazará por otro mecanismo de auth
+- El helper `parseCookies()` en `api/pdp.js`
+- El modelo `AccessLog` en `prisma/schema.prisma`
+- Las migraciones de Prisma asociadas a la tabla `access_log`
+- La dependencia de base de datos (Prisma + Neon)
+
 ## API Endpoints
 
 | Route | Method | Auth | Description |

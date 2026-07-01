@@ -15,6 +15,8 @@ module.exports = async (req, res) => {
     return res.end();
   }
 
+  // [LOGIN DETECTOR - A RETIRAR] Firma el JWT que luego se verifica en
+  // requireAuth (server.js) o en api/pdp.js para detectar la sesión activa.
   const token = jwt.sign({ authenticated: true }, JWT_SECRET, { expiresIn: '24h' });
 
   res.writeHead(302, {

@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// [LOGIN DETECTOR - A RETIRAR] Modelo que persiste los accesos a la página
+// protegida /pdp. Cada visita registra IP, user-agent, referer, lenguaje y
+// un fingerprint SHA-256. Esta tabla y toda la lógica de logAccess() en
+// server.js y api/pdp.js se eliminarán en una fase posterior del desarrollo.
+model AccessLog {
+  id          Int      @id @default(autoincrement())
+  ip          String?
+  userAgent   String?
+  referer     String?
+  language    String?
+  fingerprint String
+  page        String   @default("/pdp")
+  createdAt   DateTime @default(now())
+}

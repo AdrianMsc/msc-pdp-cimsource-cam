@@ -110,75 +110,75 @@ msc-pdp-cimsource-cam/
 └── package.json
 ```
 
-## Sistema de logging de accesos (a retirar)
+## Access Logging System (to be removed)
 
-> **⚠️ Este feature será eliminado en una fase posterior del desarrollo.**
-> Los segmentos de código están marcados con `[LOGIN DETECTOR - A RETIRAR]`.
+> **⚠️ This feature will be removed in a later development phase.**
+> Code segments are marked with `[LOGIN DETECTOR - A RETIRAR]`.
 
-### Descripción
+### Description
 
-Cada vez que un usuario autenticado visita la página protegida `/pdp`, el sistema registra la visita en la base de datos mediante la función `logAccess()`. Esto permite auditar qué usuarios (por IP/dispositivo) acceden a la página y cuándo.
+Every time an authenticated user visits the protected page `/pdp`, the system logs the visit to the database via the `logAccess()` function. This allows auditing which users (by IP/device) access the page and when.
 
-### ¿Qué se registra?
+### What is logged?
 
-| Campo | Descripción |
+| Field | Description |
 |-------|-------------|
-| `ip` | Dirección IP del cliente (o `X-Forwarded-For` tras proxy) |
-| `userAgent` | Cabecera `User-Agent` del navegador (máx. 500 chars) |
-| `referer` | Cabecera `Referer` de la solicitud (máx. 1000 chars) |
-| `language` | Cabecera `Accept-Language` del navegador |
-| `fingerprint` | SHA-256 de `{ip}|{userAgent}` — identificador semianónimo del dispositivo |
-| `page` | Ruta de la página visitada (por defecto `/pdp`) |
-| `createdAt` | Marca de tiempo del acceso |
+| `ip` | Client IP address (or `X-Forwarded-For` behind proxy) |
+| `userAgent` | Browser `User-Agent` header (max 500 chars) |
+| `referer` | Request `Referer` header (max 1000 chars) |
+| `language` | Browser `Accept-Language` header |
+| `fingerprint` | SHA-256 of `{ip}|{userAgent}` — semi-anonymous device identifier |
+| `page` | Visited page path (default `/pdp`) |
+| `createdAt` | Access timestamp |
 
-### Arquitectura
+### Architecture
 
 ```
                      logAccess()
-  Usuario autenticado ──────────► Prisma ──► PostgreSQL (neon.tech)
-                                       ▲
-                                  ┌────┴────┐
-                                  │ AccessLog │
-                                  └─────────┘
+  Authenticated user ──────────► Prisma ──► PostgreSQL (neon.tech)
+                                        ▲
+                                   ┌────┴────┐
+                                   │ AccessLog │
+                                   └─────────┘
 ```
 
-### Archivos involucrados
+### Files involved
 
-| Archivo | Rol |
+| File | Role |
 |---------|-----|
-| `server.js:48-65` | Función `logAccess()` para el servidor local Express |
-| `server.js:32-42` | Middleware `requireAuth()` — detector de sesión JWT |
-| `server.js:70-73` | Redirige a `/?success=1` tras login exitoso |
-| `api/pdp.js:24-41` | Función `logAccess()` para el despliegue serverless en Vercel |
-| `api/pdp.js:14-22` | Helper `parseCookies()` — parsea cookies sin cookie-parser |
-| `api/login.js:18` | Firma del JWT — genera el token que luego se detecta |
-| `api/login.js:23` | Redirige a `/?success=1` tras login exitoso (Vercel) |
-| `index.html:19` | Mensaje "login Successfully" que se muestra con `?success=1` |
-| `index.html:35-39` | JS que bloquea el input y redirige a `/pdp` al mostrar el éxito |
-| `css/index.css:89-98` | Estilos del mensaje `.success-msg` (verde, oculto por defecto) |
-| `prisma/schema.prisma:9-18` | Modelo `AccessLog` — definición de la tabla en la BD |
+| `server.js:48-65` | `logAccess()` function for the local Express server |
+| `server.js:32-42` | `requireAuth()` middleware — JWT session detector |
+| `server.js:70-73` | Redirects to `/?success=1` after successful login |
+| `api/pdp.js:24-41` | `logAccess()` function for the Vercel serverless deployment |
+| `api/pdp.js:14-22` | `parseCookies()` helper — parses cookies without cookie-parser |
+| `api/login.js:18` | JWT signing — generates the token that is later detected |
+| `api/login.js:23` | Redirects to `/?success=1` after successful login (Vercel) |
+| `index.html:19` | "login Successfully" message shown with `?success=1` |
+| `index.html:35-39` | JS that blocks the input and redirects to `/pdp` on success |
+| `css/index.css:89-98` | `.success-msg` styles (green, hidden by default) |
+| `prisma/schema.prisma:9-18` | `AccessLog` model — database table definition |
 
-### Flujo completo
+### Complete flow
 
-1. El usuario ingresa la contraseña en `/` → `POST /api/login`
-2. El servidor valida la contraseña y firma un JWT con `jwt.sign()`
-3. El JWT se almacena en una cookie HttpOnly (`token`)
-4. El servidor redirige a `/?success=1` en vez de directamente a `/pdp`
-5. La login page muestra el mensaje "login Successfully", bloquea el input de password y redirige inmediatamente a `/pdp`
-6. En cada request a `/pdp` o `/api/pdp`, el middleware `requireAuth()` (o la verificación inline en `api/pdp.js`) extrae y verifica el JWT
-7. Si el token es válido, se llama a `logAccess()` que persiste los datos del request en la tabla `AccessLog`
-8. Si el token falta o es inválido, se redirige a `/` (login)
+1. The user enters the password at `/` → `POST /api/login`
+2. The server validates the password and signs a JWT with `jwt.sign()`
+3. The JWT is stored in an HttpOnly cookie (`token`)
+4. The server redirects to `/?success=1` instead of directly to `/pdp`
+5. The login page shows the "login Successfully" message, disables the password input, and immediately redirects to `/pdp`
+6. On each request to `/pdp` or `/api/pdp`, the `requireAuth()` middleware (or inline verification in `api/pdp.js`) extracts and verifies the JWT
+7. If the token is valid, `logAccess()` is called, which persists the request data in the `AccessLog` table
+8. If the token is missing or invalid, the user is redirected to `/` (login)
 
-### ¿Qué se eliminará?
+### What will be removed?
 
-- La función `logAccess()` en ambos archivos (`server.js`, `api/pdp.js`)
-- El middleware `requireAuth()` — se reemplazará por otro mecanismo de auth
-- El helper `parseCookies()` en `api/pdp.js`
-- El modelo `AccessLog` en `prisma/schema.prisma`
-- Las migraciones de Prisma asociadas a la tabla `access_log`
-- La dependencia de base de datos (Prisma + Neon)
-- El mensaje "login Successfully" y su lógica en `index.html` y `css/index.css`
-- Los redirects a `/?success=1` en `server.js` y `api/login.js`
+- The `logAccess()` function in both files (`server.js`, `api/pdp.js`)
+- The `requireAuth()` middleware — will be replaced by another auth mechanism
+- The `parseCookies()` helper in `api/pdp.js`
+- The `AccessLog` model in `prisma/schema.prisma`
+- Prisma migrations associated with the `access_log` table
+- The database dependency (Prisma + Neon)
+- The "login Successfully" message and its logic in `index.html` and `css/index.css`
+- Redirects to `/?success=1` in `server.js` and `api/login.js`
 
 ## API Endpoints
 
